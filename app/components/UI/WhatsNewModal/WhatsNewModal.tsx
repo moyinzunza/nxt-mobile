@@ -15,10 +15,7 @@ import Icon from 'react-native-vector-icons/FontAwesome';
 import { strings } from '../../../../locales/i18n';
 import Device from '../../../util/device';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
-  CURRENT_APP_VERSION,
-  WHATS_NEW_APP_VERSION_SEEN,
-} from '../../../constants/storage';
+import { WHATS_NEW_VERSION_SEEN } from '../../../constants/storage';
 import StyledButton from '../StyledButton';
 import { useTheme } from '../../../util/theme';
 import ReusableModal, { ReusableModalRef } from '../ReusableModal';
@@ -138,9 +135,11 @@ const WhatsNewModal = (props: WhatsNewModalProps) => {
   const { colors } = useTheme();
   const styles = createStyles(colors);
 
-  const recordSeenModal = async () => {
-    const version = await AsyncStorage.getItem(CURRENT_APP_VERSION);
-    await AsyncStorage.setItem(WHATS_NEW_APP_VERSION_SEEN, version as string);
+  const recordSeenModal = async (whatsNewListVersion: number) => {
+    await AsyncStorage.setItem(
+      WHATS_NEW_VERSION_SEEN,
+      `${whatsNewListVersion}`,
+    );
   };
 
   const dismissModal = (callback?: () => void) =>
@@ -253,7 +252,7 @@ const WhatsNewModal = (props: WhatsNewModalProps) => {
     <ReusableModal
       ref={modalRef}
       style={styles.screen}
-      onDismiss={recordSeenModal}
+      onDismiss={() => recordSeenModal(whatsNewList.version)}
     >
       <View
         style={styles.modal}

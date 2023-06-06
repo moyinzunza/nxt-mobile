@@ -2,7 +2,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import compareVersions from 'compare-versions';
 import {
-  WHATS_NEW_APP_VERSION_SEEN,
+  WHATS_NEW_VERSION_SEEN,
   CURRENT_APP_VERSION,
   LAST_APP_VERSION,
 } from '../../constants/storage';
@@ -14,49 +14,35 @@ import { whatsNewList } from '../../components/UI/WhatsNewModal';
  * @returns Boolean indicating whether or not to show whats new modal
  */
 export const shouldShowWhatsNewModal = async () => {
-  const whatsNewAppVersionSeen = await AsyncStorage.getItem(
-    WHATS_NEW_APP_VERSION_SEEN,
+  const minAppVersion = whatsNewList.minAppVersion;
+  const maxAppVersion = whatsNewList.maxAppVersion;
+  const disabled = whatsNewList.disabled;
+  const onlyUpdates = whatsNewList.onlyUpdates;
+
+  // Whats new content is disabled
+  if (disabled) return false;
+
+  // Whats new content version seen
+  const whatsNewVersionSeen = await AsyncStorage.getItem(
+    WHATS_NEW_VERSION_SEEN,
   );
 
-  const currentAppVersion = await AsyncStorage.getItem(CURRENT_APP_VERSION);
+  const currentAppVersion = (await AsyncStorage.getItem(
+    CURRENT_APP_VERSION,
+  )) as string;
   const lastAppVersion = await AsyncStorage.getItem(LAST_APP_VERSION);
+
   const isUpdate = !!lastAppVersion && currentAppVersion !== lastAppVersion;
 
+  const isInRange =
+    compareVersions.compare(currentAppVersion, minAppVersion, '>=') &&
+    compareVersions.compare(currentAppVersion, maxAppVersion, '<=');
+
   const seen =
-    !!whatsNewAppVersionSeen &&
-    compareVersions.compare(
-      whatsNewAppVersionSeen,
-      whatsNewList.minAppVersion,
-      '>=',
-    );
+    !!whatsNewVersionSeen && whatsNewVersionSeen === `${whatsNewList.version}`;
 
+  if (!isInRange) return false;
   if (seen) return false;
-
-  if (whatsNewList.onlyUpdates) {
-    const updatingCorrect = whatsNewList.onlyUpdates && isUpdate;
-
-    if (!updatingCorrect) return false;
-
-    const lastVersionCorrect = compareVersions.compare(
-      lastAppVersion,
-      whatsNewList.maxLastAppVersion,
-      '<',
-    );
-
-    if (!lastVersionCorrect) return false;
-  }
-
-  const versionCorrect = compareVersions.compare(
-    currentAppVersion as string,
-    whatsNewList.minAppVersion,
-    '>=',
-  );
-
-  if (!versionCorrect) return false;
-
-  if (whatsNewList.slides.length) {
-    // Show whats new
-    return true;
-  }
-  return false;
+  if (onlyUpdates && !isUpdate) return false;
+  return whatsNewList.slides.length > 0;
 };

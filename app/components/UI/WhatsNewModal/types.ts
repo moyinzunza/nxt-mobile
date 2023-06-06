@@ -44,8 +44,10 @@ type WhatsNewSlides = SlideContentType[][];
 type VersionString = `${number}.${number}.${number}`;
 
 export interface WhatsNew {
+  version: number;
   onlyUpdates: boolean;
-  maxLastAppVersion: VersionString;
+  disabled: boolean;
+  maxAppVersion: VersionString;
   minAppVersion: VersionString;
   /**
    * Slides utilizes a templating system in the form of a 2D array, which is eventually rendered within app/components/UI/WhatsNewModal/index.js.
