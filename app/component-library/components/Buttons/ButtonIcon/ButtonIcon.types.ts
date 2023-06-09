@@ -2,7 +2,7 @@
 import { TouchableOpacityProps } from 'react-native';
 
 // External dependencies.
-import { IconProps, IconSize } from '../../Icon/Icon.types';
+import { IconProps, IconSize } from '../../Icons/Icon';
 
 /**
  * Size variants of ButtonIcon.
@@ -48,6 +48,10 @@ export interface ButtonIconProps extends TouchableOpacityProps {
    * Size of the buttonIcon.
    */
   size?: ButtonIconSizes;
+  /**
+   * Icon color to override
+   */
+  iconColorOverride?: string;
 }
 
 /**

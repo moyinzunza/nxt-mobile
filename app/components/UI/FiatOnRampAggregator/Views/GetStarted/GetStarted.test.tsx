@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent } from '@testing-library/react-native';
+import { fireEvent, screen } from '@testing-library/react-native';
 import { renderScreen } from '../../../../../util/test/renderWithProvider';
 
 import GetStarted from './GetStarted';
@@ -18,7 +18,9 @@ function render(Component: React.ComponentType) {
       state: {
         engine: {
           backgroundState: {
-            NetworkController: { provider: { type: 'mainnet', chainId: 1 } },
+            NetworkController: {
+              providerConfig: { type: 'mainnet', chainId: 1 },
+            },
           },
         },
       },
@@ -82,8 +84,8 @@ describe('GetStarted', () => {
     mockUseFiatOnRampSDKValues = {
       ...mockuseFiatOnRampSDKInitialValues,
     };
-    const rendered = render(GetStarted);
-    expect(rendered.toJSON()).toMatchSnapshot();
+    render(GetStarted);
+    expect(screen.toJSON()).toMatchSnapshot();
   });
 
   it('renders correctly when sdkError is present', async () => {
@@ -91,8 +93,8 @@ describe('GetStarted', () => {
       ...mockuseFiatOnRampSDKInitialValues,
       sdkError: new Error('sdkError'),
     };
-    const rendered = render(GetStarted);
-    expect(rendered.toJSON()).toMatchSnapshot();
+    render(GetStarted);
+    expect(screen.toJSON()).toMatchSnapshot();
   });
 
   it('renders correctly when getStarted is true', async () => {
@@ -100,8 +102,8 @@ describe('GetStarted', () => {
       ...mockuseFiatOnRampSDKInitialValues,
       getStarted: true,
     };
-    const rendered = render(GetStarted);
-    expect(rendered.toJSON()).toMatchSnapshot();
+    render(GetStarted);
+    expect(screen.toJSON()).toMatchSnapshot();
   });
 
   it('calls setOptions when rendering', async () => {
@@ -113,8 +115,8 @@ describe('GetStarted', () => {
     mockUseFiatOnRampSDKValues = {
       ...mockuseFiatOnRampSDKInitialValues,
     };
-    const rendered = render(GetStarted);
-    fireEvent.press(rendered.getByRole('button', { name: 'Get started' }));
+    render(GetStarted);
+    fireEvent.press(screen.getByRole('button', { name: 'Get started' }));
     expect(mockNavigate).toHaveBeenCalledWith(...createRegionsNavDetails());
     expect(mockUseFiatOnRampSDKValues.setGetStarted).toHaveBeenCalledWith(true);
   });
@@ -123,8 +125,8 @@ describe('GetStarted', () => {
     mockUseFiatOnRampSDKValues = {
       ...mockuseFiatOnRampSDKInitialValues,
     };
-    const rendered = render(GetStarted);
-    fireEvent.press(rendered.getByRole('button', { name: 'Cancel' }));
+    render(GetStarted);
+    fireEvent.press(screen.getByRole('button', { name: 'Cancel' }));
     expect(mockPop).toHaveBeenCalled();
     expect(mockTrackEvent).toBeCalledWith('ONRAMP_CANCELED', {
       chain_id_destination: '1',

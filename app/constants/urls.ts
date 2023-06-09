@@ -9,6 +9,8 @@ export const KEEP_SRP_SAFE_URL =
   'https://metamask.zendesk.com/hc/en-us/articles/4407169552667-Scammers-and-Phishers-Rugpulls-and-airdrop-scams';
 export const LEARN_MORE_URL =
   'https://metamask.zendesk.com/hc/en-us/articles/360015489591-Basic-Safety-and-Security-Tips-for-MetaMask';
+export const WHY_TRANSACTION_TAKE_TIME_URL =
+  'https://community.metamask.io/t/what-is-gas-why-do-transactions-take-so-long/3172';
 
 // Policies
 export const CONSENSYS_PRIVACY_POLICY = 'https://consensys.net/privacy-policy/';
@@ -25,6 +27,9 @@ export const MIXPANEL_ENDPOINT_BASE_URL = 'https://mixpanel.com/api/app';
 // Network
 export const CHAINLIST_URL = 'https://chainlist.wtf';
 export const MM_ETHERSCAN_URL = 'https://etherscamdb.info/domain/meta-mask.com';
+export const LINEA_TESTNET_BLOCK_EXPLORER =
+  'https://explorer.goerli.linea.build';
+export const LINEA_TESTNET_RPC_URL = 'https://rpc.goerli.linea.build';
 
 // Phishing
 export const MM_PHISH_DETECT_URL =

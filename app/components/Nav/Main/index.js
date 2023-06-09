@@ -11,7 +11,6 @@ import {
   AppState,
   StyleSheet,
   View,
-  Linking,
   PushNotificationIOS, // eslint-disable-line react-native/split-platform-components
 } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
@@ -54,9 +53,6 @@ import { useTheme } from '../../../util/theme';
 import RootRPCMethodsUI from './RootRPCMethodsUI';
 import usePrevious from '../../hooks/usePrevious';
 import { colors as importedColors } from '../../../styles/common';
-import WarningAlert from '../../../components/UI/WarningAlert';
-import { KOVAN, RINKEBY, ROPSTEN } from '../../../constants/network';
-import { MM_DEPRECATED_NETWORKS } from '../../../constants/urls';
 import {
   getNetworkImageSource,
   getNetworkNameFromProvider,
@@ -67,6 +63,11 @@ import {
 } from '../../../component-library/components/Toast';
 import { useEnableAutomaticSecurityChecks } from '../../hooks/EnableAutomaticSecurityChecks';
 import { useMinimumVersions } from '../../hooks/MinimumVersions';
+import navigateTermsOfUse from '../../../util/termsOfUse/termsOfUse';
+import {
+  selectProviderConfig,
+  selectProviderType,
+} from '../../../selectors/networkController';
 
 const Stack = createStackNavigator();
 
@@ -88,7 +89,6 @@ const Main = (props) => {
   const [forceReload, setForceReload] = useState(false);
   const [showRemindLaterModal, setShowRemindLaterModal] = useState(false);
   const [skipCheckbox, setSkipCheckbox] = useState(false);
-  const [showDeprecatedAlert, setShowDeprecatedAlert] = useState(true);
   const { colors } = useTheme();
   const styles = createStyles(colors);
 
@@ -217,9 +217,7 @@ const Main = (props) => {
   /**
    * Current network
    */
-  const networkProvider = useSelector(
-    (state) => state.engine.backgroundState.NetworkController.provider,
-  );
+  const networkProvider = useSelector(selectProviderConfig);
   const prevNetworkProvider = useRef(undefined);
   const { toastRef } = useContext(ToastContext);
 
@@ -319,28 +317,15 @@ const Main = (props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const openDeprecatedNetworksArticle = () => {
-    Linking.openURL(MM_DEPRECATED_NETWORKS);
-  };
-
-  const renderDeprecatedNetworkAlert = (network, backUpSeedphraseVisible) => {
-    const { wizardStep } = props;
-    const { type } = network.provider;
-    if (
-      (type === ROPSTEN || type === RINKEBY || type === KOVAN) &&
-      showDeprecatedAlert &&
-      !wizardStep
-    ) {
-      return (
-        <WarningAlert
-          text={strings('networks.deprecated_network_msg')}
-          dismissAlert={() => setShowDeprecatedAlert(false)}
-          onPressLearnMore={openDeprecatedNetworksArticle}
-          precedentAlert={backUpSeedphraseVisible}
-        />
-      );
+  const termsOfUse = useCallback(async () => {
+    if (props.navigation) {
+      await navigateTermsOfUse(props.navigation.navigate);
     }
-  };
+  }, [props.navigation]);
+
+  useEffect(() => {
+    termsOfUse();
+  }, [termsOfUse]);
 
   return (
     <React.Fragment>
@@ -359,10 +344,7 @@ const Main = (props) => {
           onDismiss={toggleRemindLater}
           navigation={props.navigation}
         />
-        {renderDeprecatedNetworkAlert(
-          props.network,
-          props.backUpSeedphraseVisible,
-        )}
+
         <SkipAccountSecurityModal
           modalVisible={showRemindLaterModal}
           onCancel={skipAccountModalSecureNow}
@@ -425,27 +407,12 @@ Main.propTypes = {
    * Object that represents the current route info like params passed to it
    */
   route: PropTypes.object,
-  /**
-   * Object representing the selected network
-   */
-  network: PropTypes.object,
-  /**
-   * redux flag that indicates if the alert should be shown
-   */
-  backUpSeedphraseVisible: PropTypes.bool,
-  /**
-   * Onboarding wizard step.
-   */
-  wizardStep: PropTypes.number,
 };
 
 const mapStateToProps = (state) => ({
   lockTime: state.settings.lockTime,
   thirdPartyApiMode: state.privacy.thirdPartyApiMode,
-  providerType: state.engine.backgroundState.NetworkController.provider.type,
-  network: state.engine.backgroundState.NetworkController,
-  backUpSeedphraseVisible: state.user.backUpSeedphraseVisible,
-  wizardStep: state.wizard.step,
+  providerType: selectProviderType(state),
 });
 
 const mapDispatchToProps = (dispatch) => ({

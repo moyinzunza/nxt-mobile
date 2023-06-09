@@ -399,12 +399,9 @@ export const BrowserTab = (props) => {
     const { PhishingController } = Engine.context;
 
     // Update phishing configuration if it is out-of-date
-    const phishingListsAreOutOfDate = PhishingController.isOutOfDate();
-    if (phishingListsAreOutOfDate) {
-      // This is async but we are not `await`-ing it here intentionally, so that we don't slow
-      // down network requests. The configuration is updated for the next request.
-      PhishingController.updatePhishingLists();
-    }
+    // This is async but we are not `await`-ing it here intentionally, so that we don't slow
+    // down network requests. The configuration is updated for the next request.
+    PhishingController.maybeUpdateState();
 
     const phishingControllerTestResult = PhishingController.test(hostname);
 
@@ -503,7 +500,6 @@ export const BrowserTab = (props) => {
       const prefixedUrl = prefixUrlWithProtocol(url);
       const { hostname, query, pathname } = new URL(prefixedUrl);
       let urlToGo = prefixedUrl;
-      urlToGo = sanitizeUrlInput(urlToGo);
       const isEnsUrl = isENSUrl(url);
       const { current } = webviewRef;
       if (isEnsUrl) {
@@ -526,7 +522,9 @@ export const BrowserTab = (props) => {
         } else {
           current &&
             current.injectJavaScript(
-              `(function(){window.location.href = '${urlToGo}' })()`,
+              `(function(){window.location.href = '${sanitizeUrlInput(
+                urlToGo,
+              )}' })()`,
             );
         }
 
@@ -780,9 +778,17 @@ export const BrowserTab = (props) => {
    *  Return `true` to continue loading the request and `false` to stop loading.
    */
   const onShouldStartLoadWithRequest = ({ url }) => {
+    const { hostname } = new URL(url);
+
     // Stops normal loading when it's ens, instead call go to be properly set up
     if (isENSUrl(url)) {
       go(url.replace(/^http:\/\//, 'https://'));
+      return false;
+    }
+
+    // Cancel loading the page if we detect its a phishing page
+    if (!isAllowedUrl(hostname)) {
+      handleNotAllowedUrl(url);
       return false;
     }
 
@@ -854,13 +860,10 @@ export const BrowserTab = (props) => {
         return;
       }
       if (data.name) {
+        const origin = new URL(nativeEvent.url).origin;
         backgroundBridges.current.forEach((bridge) => {
-          if (bridge.isMainFrame) {
-            const { origin } = data && data.origin && new URL(data.origin);
-            bridge.url === origin && bridge.onMessage(data);
-          } else {
-            bridge.url === data.origin && bridge.onMessage(data);
-          }
+          const bridgeOrigin = new URL(bridge.url).origin;
+          bridgeOrigin === origin && bridge.onMessage(data);
         });
         return;
       }
@@ -980,10 +983,6 @@ export const BrowserTab = (props) => {
       changeAddressBar({ ...nativeEvent });
     }
 
-    if (!isAllowedUrl(hostname)) {
-      return handleNotAllowedUrl(nativeEvent.url);
-    }
-
     setError(false);
 
     changeUrl(nativeEvent);
@@ -997,6 +996,13 @@ export const BrowserTab = (props) => {
     // Reset the previous bridges
     backgroundBridges.current.length &&
       backgroundBridges.current.forEach((bridge) => bridge.onDisconnect());
+
+    // Cancel loading the page if we detect its a phishing page
+    if (!isAllowedUrl(hostname)) {
+      handleNotAllowedUrl(url);
+      return false;
+    }
+
     backgroundBridges.current = [];
     const origin = new URL(nativeEvent.url).origin;
     initializeBackgroundBridge(origin, true);
@@ -1364,7 +1370,7 @@ export const BrowserTab = (props) => {
    * Main render
    */
   return (
-    <ErrorBoundary view="BrowserTab">
+    <ErrorBoundary navigation={props.navigation} view="BrowserTab">
       <View
         style={[styles.wrapper, !isTabActive && styles.hide]}
         {...(Device.isAndroid() ? { collapsable: false } : {})}

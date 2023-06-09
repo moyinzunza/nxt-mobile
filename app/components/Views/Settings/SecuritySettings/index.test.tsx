@@ -15,13 +15,14 @@ const initialState = {
       PreferencesController: {
         selectedAddress: '0x',
         identities: { '0x': { name: 'Account 1' } },
+        isMultiAccountBalancesEnabled: true,
       },
       AccountTrackerController: { accounts: {} },
       KeyringController: {
         keyrings: [{ accounts: ['0x'], type: 'HD Key Tree' }],
       },
       NetworkController: {
-        provider: {
+        providerConfig: {
           type: 'mainnet',
         },
       },
@@ -40,6 +41,6 @@ describe('SecuritySettings', () => {
         <SecuritySettings />
       </Provider>,
     );
-    expect(wrapper.dive()).toMatchSnapshot();
+    expect(wrapper).toMatchSnapshot();
   });
 });

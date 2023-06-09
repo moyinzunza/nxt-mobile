@@ -27,6 +27,9 @@ import {
   isNumberScientificNotationWhenString,
   calculateEthFeeForMultiLayer,
   limitToMaximumDecimalPlaces,
+  isZeroValue,
+  toBN,
+  addCurrencySymbol,
 } from '.';
 
 describe('Number utils :: BNToHex', () => {
@@ -389,9 +392,9 @@ describe('Number utils :: isDecimal', () => {
 describe('Number utils :: weiToFiat', () => {
   it('weiToFiat', () => {
     const wei = toWei('1');
-    expect(weiToFiat(wei, 1, 'usd')).toEqual('$1');
-    expect(weiToFiat(wei, 0.5, 'usd')).toEqual('$0.5');
-    expect(weiToFiat(wei, 0.1, 'usd')).toEqual('$0.1');
+    expect(weiToFiat(wei, 1, 'usd')).toEqual('$1.00');
+    expect(weiToFiat(wei, 0.5, 'usd')).toEqual('$0.50');
+    expect(weiToFiat(wei, 0.1, 'usd')).toEqual('$0.10');
   });
 });
 
@@ -507,6 +510,15 @@ describe('Number utils :: balanceToFiat', () => {
   it('balanceToFiat', () => {
     expect(balanceToFiat(0.1, 0.1, 0.1, 'usd')).toEqual('$0.00');
     expect(balanceToFiat(0.0001, 0.1, 0.1, 'usd')).toEqual('$0.00');
+  });
+});
+
+describe('Number utils :: addCurrencySymbol', () => {
+  it('balanceToFiat', () => {
+    expect(addCurrencySymbol(0.1, 'usd')).toEqual('$0.10');
+    expect(addCurrencySymbol(0.0001, 'usd')).toEqual('$0.00');
+    expect(addCurrencySymbol(0.0001, 'usd', true)).toEqual('$0.0001');
+    expect(addCurrencySymbol(0.000101, 'usd', true)).toEqual('$0.000101');
   });
 });
 
@@ -772,5 +784,20 @@ describe('Number utils :: limitToMaximumDecimalPlaces', () => {
 
   it('does not add any decimal places for a whole number', () => {
     expect(limitToMaximumDecimalPlaces(5)).toBe('5');
+  });
+});
+
+describe('Number utils :: isZeroValue', () => {
+  it('returns true for 0', () => {
+    expect(isZeroValue(0)).toBe(true);
+  });
+  it('returns true for hexadecimal string 0x0', () => {
+    expect(isZeroValue('0x0')).toBe(true);
+  });
+  it('returns true for hexadecimal integer literal 0x0', () => {
+    expect(isZeroValue(0x0)).toBe(true);
+  });
+  it('returns true for BN zero value', () => {
+    expect(isZeroValue(toBN('0'))).toBe(true);
   });
 });

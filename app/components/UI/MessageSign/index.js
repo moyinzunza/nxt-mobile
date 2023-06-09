@@ -15,7 +15,7 @@ import AnalyticsV2 from '../../../util/analyticsV2';
 
 import { getAddressAccountType } from '../../../util/address';
 import { ThemeContext, mockTheme } from '../../../util/theme';
-import { MM_SDK_REMOTE_ORIGIN } from '../../../core/SDKConnect';
+import AppConstants from '../../../core/AppConstants';
 
 const createStyles = (colors) =>
   StyleSheet.create({
@@ -79,7 +79,7 @@ class MessageSign extends PureComponent {
         messageParams: { from },
       } = this.props;
       const { NetworkController } = Engine.context;
-      const { chainId } = NetworkController?.state?.provider || {};
+      const { chainId } = NetworkController?.state?.providerConfig || {};
       const url = new URL(currentPageInformation?.url);
       return {
         account_type: getAddressAccountType(from),
@@ -108,7 +108,9 @@ class MessageSign extends PureComponent {
     InteractionManager.runAfterInteractions(() => {
       messageParams.origin &&
         (messageParams.origin.startsWith(WALLET_CONNECT_ORIGIN) ||
-          messageParams.origin.startsWith(MM_SDK_REMOTE_ORIGIN)) &&
+          messageParams.origin.startsWith(
+            AppConstants.MM_SDK.SDK_REMOTE_ORIGIN,
+          )) &&
         NotificationManager.showSimpleNotification({
           status: `simple_notification${!confirmation ? '_rejected' : ''}`,
           duration: 5000,
@@ -122,21 +124,16 @@ class MessageSign extends PureComponent {
 
   signMessage = async () => {
     const { messageParams } = this.props;
-    const { KeyringController, MessageManager } = Engine.context;
-    const messageId = messageParams.metamaskId;
-    const cleanMessageParams = await MessageManager.approveMessage(
-      messageParams,
-    );
-    const rawSig = await KeyringController.signMessage(cleanMessageParams);
-    MessageManager.setMessageStatusSigned(messageId, rawSig);
+    const { SignatureController } = Engine.context;
+    await SignatureController.signMessage(messageParams);
     this.showWalletConnectNotification(messageParams, true);
   };
 
-  rejectMessage = () => {
+  rejectMessage = async () => {
     const { messageParams } = this.props;
-    const { MessageManager } = Engine.context;
+    const { SignatureController } = Engine.context;
     const messageId = messageParams.metamaskId;
-    MessageManager.rejectMessage(messageId);
+    await SignatureController.cancelMessage(messageId);
     this.showWalletConnectNotification(messageParams);
   };
 

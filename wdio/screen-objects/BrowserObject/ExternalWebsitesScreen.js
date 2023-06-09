@@ -73,7 +73,21 @@ class ExternalWebsitesScreen {
     return Selectors.getXpathElementByText(HOME_FAVORITES_CARDS_URL);
   }
 
+  get testDappConnectButton() {
+    return Selectors.getXpathElementByText('CONNECT');
+  }
+
+  get testDappTransferTokens() {
+    return Selectors.getXpathElementByText('TRANSFER TOKENS');
+  }
+
+  get testDappApproveTokens() {
+    return Selectors.getXpathElementByText('APPROVE TOKENS');
+  }
+
   async tapHomeFavoritesButton() {
+    const element = await this.homeFavoriteButton;
+    await element.waitForEnabled();
     await Gestures.waitAndTap(this.homeFavoriteButton);
   }
 
@@ -96,13 +110,11 @@ class ExternalWebsitesScreen {
   }
 
   async isErrorPageTitle(title) {
-    const element = await this.errorPageTitle;
-    await expect(await element.getText()).toEqual(title);
+    await expect(this.errorPageTitle).toHaveText(title);
   }
 
   async isErrorPageMessage(message) {
-    const element = await this.errorPageMessage;
-    await expect(await element.getText()).toEqual(message);
+    await expect(this.errorPageMessage).toHaveText(message);
   }
 
   async tapWrongReturnButton() {
@@ -116,9 +128,26 @@ class ExternalWebsitesScreen {
   async tapUniswapConnectButton() {
     await Gestures.waitAndTap(this.uniswapConnectButton);
   }
+  async tapDappConnectButton() {
+    const element = await this.testDappConnectButton;
+    await element.waitForEnabled();
+    await Gestures.waitAndTap(this.testDappConnectButton);
+  }
+
+  async tapDappTransferTokens() {
+    const element = await this.testDappTransferTokens;
+    await element.waitForEnabled();
+    await Gestures.waitAndTap(this.testDappTransferTokens);
+  }
+
+  async tapDappApproveTokens() {
+    const element = await this.testDappApproveTokens;
+    await element.waitForEnabled();
+    await Gestures.waitAndTap(this.testDappApproveTokens);
+  }
 
   async tapUniswapMetaMaskWalletButton() {
-    await Gestures.waitAndTap(this.uniswapMetamaskWalletButton);
+    await Gestures.tapTextByXpath('MetaMask');
   }
 
   async isUniswapProfileIconDisplayed() {

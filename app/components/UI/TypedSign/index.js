@@ -16,7 +16,8 @@ import URL from 'url-parse';
 import { getAddressAccountType } from '../../../util/address';
 import { KEYSTONE_TX_CANCELED } from '../../../constants/error';
 import { ThemeContext, mockTheme } from '../../../util/theme';
-import { MM_SDK_REMOTE_ORIGIN } from '../../../core/SDKConnect';
+import sanitizeString from '../../../util/string';
+import AppConstants from '../../../core/AppConstants';
 
 const createStyles = (colors) =>
   StyleSheet.create({
@@ -86,7 +87,7 @@ class TypedSign extends PureComponent {
     try {
       const { currentPageInformation, messageParams } = this.props;
       const { NetworkController } = Engine.context;
-      const { chainId } = NetworkController?.state?.provider || {};
+      const { chainId } = NetworkController?.state?.providerConfig || {};
       const url = new URL(currentPageInformation?.url);
       return {
         account_type: getAddressAccountType(messageParams.from),
@@ -124,7 +125,9 @@ class TypedSign extends PureComponent {
     InteractionManager.runAfterInteractions(() => {
       messageParams.origin &&
         (messageParams.origin.startsWith(WALLET_CONNECT_ORIGIN) ||
-          messageParams.origin.startsWith(MM_SDK_REMOTE_ORIGIN)) &&
+          messageParams.origin.startsWith(
+            AppConstants.MM_SDK.SDK_REMOTE_ORIGIN,
+          )) &&
         NotificationManager.showSimpleNotification({
           status: `simple_notification${!confirmation ? '_rejected' : ''}`,
           duration: 5000,
@@ -136,37 +139,27 @@ class TypedSign extends PureComponent {
 
   signMessage = async () => {
     const { messageParams } = this.props;
-    const { KeyringController, TypedMessageManager } = Engine.context;
-    const messageId = messageParams.metamaskId;
-    const version = messageParams.version;
-    let rawSig;
-    let cleanMessageParams;
+    const { SignatureController } = Engine.context;
     try {
-      cleanMessageParams = await TypedMessageManager.approveMessage(
-        messageParams,
-      );
-      rawSig = await KeyringController.signTypedMessage(
-        cleanMessageParams,
-        version,
-      );
-      TypedMessageManager.setMessageStatusSigned(messageId, rawSig);
+      await SignatureController.signTypedMessage(messageParams, {
+        parseJsonData: false,
+      });
       this.showWalletConnectNotification(messageParams, true);
     } catch (error) {
-      TypedMessageManager.setMessageStatusSigned(messageId, error.message);
       this.showWalletConnectNotification(messageParams, false, true);
     }
   };
 
-  rejectMessage = () => {
+  rejectMessage = async () => {
     const { messageParams } = this.props;
-    const { TypedMessageManager } = Engine.context;
+    const { SignatureController } = Engine.context;
     const messageId = messageParams.metamaskId;
-    TypedMessageManager.rejectMessage(messageId);
+    await SignatureController.cancelTypedMessage(messageId);
     this.showWalletConnectNotification(messageParams);
   };
 
-  cancelSignature = () => {
-    this.rejectMessage();
+  cancelSignature = async () => {
+    await this.rejectMessage();
     AnalyticsV2.trackEvent(
       MetaMetricsEvents.SIGN_REQUEST_CANCELLED,
       this.getAnalyticsParams(),
@@ -216,12 +209,15 @@ class TypedSign extends PureComponent {
       <View style={styles.message} key={key}>
         {obj[key] && typeof obj[key] === 'object' ? (
           <View>
-            <Text style={[styles.messageText, styles.msgKey]}>{key}:</Text>
+            <Text style={[styles.messageText, styles.msgKey]}>
+              {sanitizeString(key)}:
+            </Text>
             <View>{this.renderTypedMessageV3(obj[key])}</View>
           </View>
         ) : (
           <Text style={styles.messageText}>
-            <Text style={styles.msgKey}>{key}:</Text> {`${obj[key]}`}
+            <Text style={styles.msgKey}>{sanitizeString(key)}:</Text>{' '}
+            {sanitizeString(`${obj[key]}`)}
           </Text>
         )}
       </View>
@@ -238,10 +234,10 @@ class TypedSign extends PureComponent {
           {messageParams.data.map((obj, i) => (
             <View key={`${obj.name}_${i}`}>
               <Text style={[styles.messageText, styles.msgKey]}>
-                {obj.name}:
+                {sanitizeString(obj.name)}:
               </Text>
               <Text style={styles.messageText} key={obj.name}>
-                {` ${obj.value}`}
+                {sanitizeString(` ${obj.value}`)}
               </Text>
             </View>
           ))}

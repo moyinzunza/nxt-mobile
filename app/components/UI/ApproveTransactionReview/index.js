@@ -13,16 +13,19 @@ import { connect } from 'react-redux';
 import { getHost } from '../../../util/browser';
 import {
   safeToChecksumAddress,
-  renderShortAddress,
   getAddressAccountType,
+  getTokenDetails,
+  shouldShowBlockExplorer,
 } from '../../../util/address';
 import Engine from '../../../core/Engine';
 import { strings } from '../../../../locales/i18n';
 import { setTransactionObject } from '../../../actions/transaction';
 import { GAS_ESTIMATE_TYPES } from '@metamask/gas-fee-controller';
 import { hexToBN } from '@metamask/controller-utils';
-import { fromTokenMinimalUnit } from '../../../util/number';
-import EthereumAddress from '../EthereumAddress';
+import {
+  fromTokenMinimalUnit,
+  renderFromTokenMinimalUnit,
+} from '../../../util/number';
 import {
   getTicker,
   getNormalizedTxState,
@@ -31,15 +34,19 @@ import {
   decodeApproveData,
   generateTxWithNewTokenAllowance,
   minimumTokenAllowance,
+  generateApproveData,
 } from '../../../util/transactions';
-import Feather from 'react-native-vector-icons/Feather';
+import Avatar, {
+  AvatarSize,
+  AvatarVariants,
+} from '../../../component-library/components/Avatars/Avatar';
 import Identicon from '../../UI/Identicon';
+import TransactionTypes from '../../../core/TransactionTypes';
 import { showAlert } from '../../../actions/alert';
 import Analytics from '../../../core/Analytics/Analytics';
 import { MetaMetricsEvents } from '../../../core/Analytics';
 import AnalyticsV2 from '../../../util/analyticsV2';
 import TransactionHeader from '../../UI/TransactionHeader';
-import AccountInfoCard from '../../UI/AccountInfoCard';
 import TransactionReviewDetailsCard from '../../UI/TransactionReview/TransactionReviewDetailsCard';
 import AppConstants from '../../../core/AppConstants';
 import { UINT256_HEX_MAX_VALUE } from '../../../constants/transaction';
@@ -47,14 +54,14 @@ import { WALLET_CONNECT_ORIGIN } from '../../../util/walletconnect';
 import { withNavigation } from '@react-navigation/compat';
 import {
   isTestNet,
-  isMainnetByChainId,
   isMultiLayerFeeNetwork,
   fetchEstimatedMultiLayerL1Fee,
+  isMainnetByChainId,
 } from '../../../util/networks';
-import EditPermission from './EditPermission';
+import CustomSpendCap from '../../../component-library/components-temp/CustomSpendCap';
+import IonicIcon from 'react-native-vector-icons/Ionicons';
 import Logger from '../../../util/Logger';
-import InfoModal from '../Swaps/components/InfoModal';
-import Text from '../../Base/Text';
+import ButtonLink from '../../../component-library/components/Buttons/Button/variants/ButtonLink';
 import { getTokenList } from '../../../reducers/tokens';
 import TransactionReview from '../../UI/TransactionReview/TransactionReviewEIP1559Update';
 import ClipboardManager from '../../../core/ClipboardManager';
@@ -62,15 +69,33 @@ import { ThemeContext, mockTheme } from '../../../util/theme';
 import withQRHardwareAwareness from '../QRHardware/withQRHardwareAwareness';
 import QRSigningDetails from '../QRHardware/QRSigningDetails';
 import Routes from '../../../constants/navigation/Routes';
-import formatNumber from '../../../util/formatNumber';
-import { allowedToBuy } from '../FiatOnRampAggregator';
-import { MM_SDK_REMOTE_ORIGIN } from '../../../core/SDKConnect';
 import createStyles from './styles';
+import {
+  selectChainId,
+  selectNetwork,
+  selectProviderType,
+  selectTicker,
+  selectRpcTarget,
+} from '../../../selectors/networkController';
+import Text, {
+  TextVariant,
+} from '../../../component-library/components/Texts/Text';
+import ApproveTransactionHeader from '../ApproveTransactionHeader';
+import VerifyContractDetails from './VerifyContractDetails/VerifyContractDetails';
+import ShowBlockExplorer from './ShowBlockExplorer';
+import { isNetworkBuyNativeTokenSupported } from '../FiatOnRampAggregator/utils';
+import { getRampNetworks } from '../../../reducers/fiatOrders';
+import SkeletonText from '../FiatOnRampAggregator/components/SkeletonText';
+import InfoModal from '../../../components/UI/Swaps/components/InfoModal';
 
 const { ORIGIN_DEEPLINK, ORIGIN_QR_CODE } = AppConstants.DEEPLINKS;
 const POLLING_INTERVAL_ESTIMATED_L1_FEE = 30000;
 
 let intervalIdForEstimatedL1Fee;
+
+const {
+  ASSET: { ERC721, ERC1155, ERC20 },
+} = TransactionTypes;
 
 /**
  * PureComponent that manages ERC20 approve from the dapp browser
@@ -185,9 +210,9 @@ class ApproveTransactionReview extends PureComponent {
      */
     setTransactionObject: PropTypes.func,
     /**
-     * Update contract nickname
+     * toggle nickname modal
      */
-    onUpdateContractNickname: PropTypes.func,
+    toggleModal: PropTypes.func,
     /**
      * The saved nickname of the address
      */
@@ -214,25 +239,52 @@ class ApproveTransactionReview extends PureComponent {
      * eip1559 gas object for calculating eip1559 transaction
      */
     eip1559GasObject: PropTypes.object,
+    showBlockExplorer: PropTypes.func,
+    /**
+     * function to toggle the verify contract details modal
+     */
+    showVerifyContractDetails: PropTypes.func,
+    savedContactListToArray: PropTypes.array,
+    closeVerifyContractDetails: PropTypes.func,
+    shouldVerifyContractDetails: PropTypes.bool,
+    frequentRpcList: PropTypes.array,
+    providerRpcTarget: PropTypes.string,
+    /**
+     * Boolean that indicates if the native token buy is supported
+     */
+    isNativeTokenBuySupported: PropTypes.bool,
+    /**
+     * Function to update token allowance state in Approve component
+     */
+    updateTokenAllowanceState: PropTypes.func,
+    /**
+     * Token allowance state from Approve component
+     */
+    tokenAllowanceState: PropTypes.object,
+    /**
+     * Boolean that indicates gas estimated value is confirmed before approving
+     */
+    isGasEstimateStatusIn: PropTypes.bool,
   };
 
   state = {
     viewData: false,
-    editPermissionVisible: false,
     host: undefined,
     originalApproveAmount: undefined,
-    customSpendAmount: null,
-    tokenSymbol: undefined,
-    spendLimitUnlimitedSelected: true,
     spendLimitCustomValue: undefined,
     ticker: getTicker(this.props.ticker),
     viewDetails: false,
     spenderAddress: '0x...',
     transaction: this.props.transaction,
     token: {},
+    spendCapCreated: false,
+    tokenSpendValue: '',
     showGasTooltip: false,
     gasTransactionObject: {},
     multiLayerL1FeeTotal: '0x0',
+    fetchingUpdateDone: false,
+    showBlockExplorerModal: false,
+    address: '',
   };
 
   customSpendLimitInput = React.createRef();
@@ -240,8 +292,9 @@ class ApproveTransactionReview extends PureComponent {
     WALLET_CONNECT_ORIGIN,
   );
 
-  originIsMMSDKRemoteConn =
-    this.props.transaction.origin?.startsWith(MM_SDK_REMOTE_ORIGIN);
+  originIsMMSDKRemoteConn = this.props.transaction.origin?.startsWith(
+    AppConstants.MM_SDK.SDK_REMOTE_ORIGIN,
+  );
 
   fetchEstimatedL1Fee = async () => {
     const { transaction, chainId } = this.props;
@@ -268,29 +321,80 @@ class ApproveTransactionReview extends PureComponent {
   componentDidMount = async () => {
     const { chainId } = this.props;
     const {
-      transaction: { origin, to, data },
+      transaction: { origin, to, data, from },
+      transaction,
+      setTransactionObject,
       tokenList,
+      tokenAllowanceState,
     } = this.props;
-    const { AssetsContractController } = Engine.context;
+    const { AssetsContractController, TokenBalancesController } =
+      Engine.context;
 
     let host;
 
     if (this.originIsWalletConnect) {
       host = getHost(origin.split(WALLET_CONNECT_ORIGIN)[1]);
     } else if (this.originIsMMSDKRemoteConn) {
-      host = origin.split(MM_SDK_REMOTE_ORIGIN)[1];
+      host = origin.split(AppConstants.MM_SDK.SDK_REMOTE_ORIGIN)[1];
     } else {
       host = getHost(origin);
     }
 
-    let tokenSymbol, tokenDecimals;
+    let tokenSymbol,
+      tokenDecimals,
+      tokenName,
+      tokenStandard,
+      tokenBalance,
+      createdSpendCap;
+
+    const { spenderAddress, encodedAmount } = decodeApproveData(data);
+    const encodedValue = hexToBN(encodedAmount).toString();
+
+    const erc20TokenBalance = await TokenBalancesController.getERC20BalanceOf(
+      to,
+      from,
+    );
+
     const contract = tokenList[safeToChecksumAddress(to)];
-    if (!contract) {
+
+    if (tokenAllowanceState) {
+      const {
+        tokenSymbol: symbol,
+        tokenDecimals: decimals,
+        tokenName: name,
+        tokenBalance: balance,
+        tokenStandard: standard,
+        spendCapCreated,
+      } = tokenAllowanceState;
+      tokenSymbol = symbol;
+      tokenDecimals = decimals;
+      tokenName = name;
+      tokenBalance = balance;
+      tokenStandard = standard;
+      createdSpendCap = spendCapCreated;
+    } else if (!contract) {
       try {
-        tokenDecimals = await AssetsContractController.getERC20TokenDecimals(
-          to,
-        );
-        tokenSymbol = await AssetsContractController.getERC721AssetSymbol(to);
+        const result = await getTokenDetails(to, from, encodedValue);
+
+        const { standard, name, decimals, symbol } = result;
+
+        if (standard === ERC721 || standard === ERC1155) {
+          tokenName = name;
+          tokenSymbol = symbol;
+          tokenStandard = standard;
+          tokenDecimals = await AssetsContractController.getERC20TokenDecimals(
+            to,
+          );
+        } else {
+          tokenDecimals = decimals;
+          tokenSymbol = symbol;
+          tokenStandard = standard;
+          tokenName = name;
+          tokenBalance = renderFromTokenMinimalUnit(
+            erc20TokenBalance,
+            decimals,
+          );
+        }
       } catch (e) {
         tokenSymbol = 'ERC20 Token';
         tokenDecimals = 18;
@@ -299,23 +403,55 @@ class ApproveTransactionReview extends PureComponent {
       tokenSymbol = contract.symbol;
       tokenDecimals = contract.decimals;
     }
-    const { spenderAddress, encodedAmount } = decodeApproveData(data);
+
     const approveAmount = fromTokenMinimalUnit(
       hexToBN(encodedAmount),
       tokenDecimals,
     );
+
     const { name: method } = await getMethodData(data);
     const minTokenAllowance = minimumTokenAllowance(tokenDecimals);
+
+    const approvalData = generateApproveData({
+      spender: spenderAddress,
+      value:
+        tokenStandard === ERC721 || tokenStandard === ERC1155
+          ? encodedValue
+          : '0',
+    });
+
+    setTransactionObject({
+      transaction: {
+        ...transaction,
+        data: approvalData,
+      },
+    });
+
+    const token = Object.values(tokenList).filter(
+      (token) => token.address === to,
+    );
 
     this.setState(
       {
         host,
         method,
         originalApproveAmount: approveAmount,
-        tokenSymbol,
-        token: { symbol: tokenSymbol, decimals: tokenDecimals },
+        token: {
+          tokenSymbol,
+          tokenDecimals,
+          tokenName,
+          tokenValue: encodedValue,
+          tokenStandard,
+          tokenBalance,
+          tokenImage: token[0]?.iconUrl,
+        },
         spenderAddress,
         encodedAmount,
+        fetchingUpdateDone: true,
+        spendCapCreated: createdSpendCap,
+        tokenSpendValue: tokenAllowanceState
+          ? tokenAllowanceState?.tokenSpendValue
+          : '',
         spendLimitCustomValue: minTokenAllowance,
       },
       () => {
@@ -334,6 +470,32 @@ class ApproveTransactionReview extends PureComponent {
     }
   };
 
+  componentDidUpdate = (_, prevState) => {
+    const { transaction, setTransactionObject } = this.props;
+    const {
+      tokenSpendValue,
+      spenderAddress,
+      token: { tokenDecimals },
+    } = this.state;
+
+    if (prevState?.tokenSpendValue !== tokenSpendValue) {
+      const newApprovalTransaction = generateTxWithNewTokenAllowance(
+        tokenSpendValue || '0',
+        tokenDecimals,
+        spenderAddress,
+        transaction,
+      );
+
+      setTransactionObject({
+        ...newApprovalTransaction,
+        transaction: {
+          ...newApprovalTransaction.transaction,
+          data: newApprovalTransaction.data,
+        },
+      });
+    }
+  };
+
   componentWillUnmount = async () => {
     clearInterval(intervalIdForEstimatedL1Fee);
   };
@@ -341,9 +503,13 @@ class ApproveTransactionReview extends PureComponent {
   getAnalyticsParams = () => {
     try {
       const { activeTabUrl, transaction, onSetAnalyticsParams } = this.props;
-      const { tokenSymbol, originalApproveAmount, encodedAmount } = this.state;
+      const {
+        token: { tokenSymbol },
+        originalApproveAmount,
+        encodedAmount,
+      } = this.state;
       const { NetworkController } = Engine.context;
-      const { chainId } = NetworkController?.state?.provider || {};
+      const { chainId } = NetworkController?.state?.providerConfig || {};
       const isDapp = !Object.values(AppConstants.DEEPLINKS).includes(
         transaction?.origin,
       );
@@ -399,42 +565,8 @@ class ApproveTransactionReview extends PureComponent {
     this.setState({ viewDetails: !viewDetails });
   };
 
-  toggleEditPermission = () => {
-    const { editPermissionVisible } = this.state;
-    !editPermissionVisible &&
-      this.trackApproveEvent(
-        MetaMetricsEvents.DAPP_APPROVE_SCREEN_EDIT_PERMISSION,
-      );
-    this.setState({ editPermissionVisible: !editPermissionVisible });
-  };
-
-  onPressSpendLimitUnlimitedSelected = () => {
-    const { token } = this.state;
-    const minTokenAllowance = minimumTokenAllowance(token.decimals);
-    this.setState({
-      spendLimitUnlimitedSelected: true,
-      spendLimitCustomValue: minTokenAllowance,
-    });
-  };
-
-  onPressSpendLimitCustomSelected = () => {
-    this.setState({ spendLimitUnlimitedSelected: false });
-    setTimeout(
-      () =>
-        this.customSpendLimitInput &&
-        this.customSpendLimitInput.current &&
-        this.customSpendLimitInput.current.focus(),
-      100,
-    );
-  };
-
-  onSpendLimitCustomValueChange = (value) => {
-    this.setState({ spendLimitCustomValue: value });
-  };
-
-  copyContractAddress = async () => {
-    const { transaction } = this.props;
-    await ClipboardManager.setString(transaction.to);
+  copyContractAddress = async (address) => {
+    await ClipboardManager.setString(address);
     this.props.showAlert({
       isVisible: true,
       autodismiss: 1500,
@@ -448,61 +580,35 @@ class ApproveTransactionReview extends PureComponent {
   };
 
   edit = () => {
-    const { onModeChange } = this.props;
+    const { onModeChange, updateTokenAllowanceState } = this.props;
+    const {
+      token: {
+        tokenName,
+        tokenStandard,
+        tokenSymbol,
+        tokenDecimals,
+        tokenBalance,
+      },
+      tokenSpendValue,
+      originalApproveAmount,
+    } = this.state;
     Analytics.trackEvent(MetaMetricsEvents.TRANSACTIONS_EDIT_TRANSACTION);
+
+    updateTokenAllowanceState({
+      tokenStandard,
+      spendCapCreated: true,
+      tokenSpendValue,
+      tokenBalance,
+      tokenSymbol,
+      originalApproveAmount,
+      tokenDecimals,
+      tokenName,
+    });
     onModeChange && onModeChange('edit');
   };
 
-  onEditPermissionSetAmount = () => {
-    const {
-      token,
-      spenderAddress,
-      spendLimitUnlimitedSelected,
-      originalApproveAmount,
-      spendLimitCustomValue,
-      transaction,
-    } = this.state;
-
-    try {
-      const { setTransactionObject } = this.props;
-      const newApprovalTransaction = generateTxWithNewTokenAllowance(
-        spendLimitUnlimitedSelected
-          ? originalApproveAmount
-          : spendLimitCustomValue,
-        token.decimals,
-        spenderAddress,
-        transaction,
-      );
-
-      const { encodedAmount } = decodeApproveData(newApprovalTransaction.data);
-
-      const approveAmount = fromTokenMinimalUnit(
-        hexToBN(encodedAmount),
-        token.decimals,
-      );
-
-      this.setState({ customSpendAmount: approveAmount });
-      setTransactionObject({
-        ...newApprovalTransaction,
-        transaction: {
-          ...newApprovalTransaction.transaction,
-          data: newApprovalTransaction.data,
-        },
-      });
-    } catch (err) {
-      Logger.log('Failed to setTransactionObject', err);
-    }
-    this.toggleEditPermission();
-    AnalyticsV2.trackEvent(
-      MetaMetricsEvents.APPROVAL_PERMISSION_UPDATED,
-      this.getAnalyticsParams(),
-    );
-  };
-
   openLinkAboutGas = () =>
-    Linking.openURL(
-      'https://community.metamask.io/t/what-is-gas-why-do-transactions-take-so-long/3172',
-    );
+    Linking.openURL(AppConstants.URLS.WHY_TRANSACTION_TAKE_TIME);
 
   toggleGasTooltip = () =>
     this.setState((state) => ({ showGasTooltip: !state.showGasTooltip }));
@@ -539,57 +645,37 @@ class ApproveTransactionReview extends PureComponent {
     );
   };
 
-  renderEditPermission = () => {
-    const {
-      host,
-      spendLimitUnlimitedSelected,
-      tokenSymbol,
-      spendLimitCustomValue,
-      originalApproveAmount,
-      token,
-    } = this.state;
-    const minimumSpendLimit = minimumTokenAllowance(token.decimals);
-
-    return (
-      <EditPermission
-        host={host}
-        minimumSpendLimit={minimumSpendLimit}
-        spendLimitUnlimitedSelected={spendLimitUnlimitedSelected}
-        tokenSymbol={tokenSymbol}
-        spendLimitCustomValue={spendLimitCustomValue}
-        originalApproveAmount={originalApproveAmount}
-        onSetApprovalAmount={this.onEditPermissionSetAmount}
-        onSpendLimitCustomValueChange={this.onSpendLimitCustomValueChange}
-        onPressSpendLimitUnlimitedSelected={
-          this.onPressSpendLimitUnlimitedSelected
-        }
-        onPressSpendLimitCustomSelected={this.onPressSpendLimitCustomSelected}
-        toggleEditPermission={this.toggleEditPermission}
-      />
-    );
-  };
-
   getStyles = () => {
     const colors = this.context.colors || mockTheme.colors;
     return createStyles(colors);
   };
 
-  toggleDisplay = () => this.props.onUpdateContractNickname();
+  goToSpendCap = () => this.setState({ spendCapCreated: false });
 
   renderDetails = () => {
     const {
-      host,
-      tokenSymbol,
-      spenderAddress,
       originalApproveAmount,
-      customSpendAmount,
+      host,
       multiLayerL1FeeTotal,
+      token: {
+        tokenStandard,
+        tokenSymbol,
+        tokenName,
+        tokenValue,
+        tokenDecimals,
+        tokenBalance,
+        tokenImage,
+      },
+      tokenSpendValue,
+      fetchingUpdateDone,
+      spendCapCreated,
     } = this.state;
+
     const {
       primaryCurrency,
       gasError,
       activeTabUrl,
-      transaction: { origin, from },
+      transaction: { origin, from, to },
       network,
       over,
       gasEstimateType,
@@ -603,6 +689,13 @@ class ApproveTransactionReview extends PureComponent {
       legacyGasObject,
       eip1559GasObject,
       updateTransactionState,
+      showBlockExplorer,
+      showVerifyContractDetails,
+      providerType,
+      providerRpcTarget,
+      frequentRpcList,
+      isNativeTokenBuySupported,
+      isGasEstimateStatusIn,
     } = this.props;
     const styles = this.getStyles();
     const isTestNetwork = isTestNet(network);
@@ -619,158 +712,237 @@ class ApproveTransactionReview extends PureComponent {
       gasEstimateType === GAS_ESTIMATE_TYPES.FEE_MARKET ||
       gasEstimateType === GAS_ESTIMATE_TYPES.NONE;
 
+    const hasBlockExplorer = shouldShowBlockExplorer({
+      providerType,
+      providerRpcTarget,
+      frequentRpcList,
+    });
+
+    const tokenLabel = `${
+      tokenName || tokenSymbol || strings(`spend_limit_edition.nft`)
+    } (#${tokenValue})`;
+
+    const isFirstScreenERC20 = tokenStandard === ERC20 && !tokenSpendValue;
+
+    const isFinalScreenNonERC20 = spendCapCreated || tokenStandard !== ERC20;
+
+    const shouldDisableConfirmButton =
+      !fetchingUpdateDone ||
+      isFirstScreenERC20 ||
+      Boolean(gasError) ||
+      transactionConfirmed ||
+      (isFinalScreenNonERC20 && !isGasEstimateStatusIn);
+
+    const confirmText =
+      tokenStandard === ERC20 && !spendCapCreated
+        ? strings('transaction.next')
+        : strings('transactions.approve');
+
     return (
       <>
         <View style={styles.section} testID={'approve-modal-test-id'}>
-          <TransactionHeader
-            currentPageInformation={{
-              origin,
-              spenderAddress,
-              title: host,
-              url: activeTabUrl,
-            }}
-          />
-          <Text reset style={styles.title} testID={'allow-access'}>
-            {strings(
-              `spend_limit_edition.${
-                originIsDeeplink ? 'allow_to_address_access' : 'allow_to_access'
-              }`,
-              { tokenSymbol },
-            )}
-          </Text>
-          {originalApproveAmount && (
-            <View style={styles.tokenAccess}>
-              <Text bold style={styles.tokenKey}>
-                {` ${strings('spend_limit_edition.access_up_to')} `}
-              </Text>
-              <Text numberOfLines={4} style={styles.tokenValue}>
-                {` ${
-                  customSpendAmount
-                    ? formatNumber(customSpendAmount)
-                    : originalApproveAmount &&
-                      formatNumber(originalApproveAmount)
-                } ${tokenSymbol}`}
-              </Text>
-            </View>
-          )}
-          <TouchableOpacity
-            style={styles.actionTouchable}
-            onPress={this.toggleEditPermission}
-          >
-            <Text reset style={styles.editPermissionText}>
-              {strings('spend_limit_edition.edit_permission')}
-            </Text>
-          </TouchableOpacity>
-          <Text reset style={styles.explanation}>
-            {`${strings(
-              `spend_limit_edition.${
-                originIsDeeplink
-                  ? 'you_trust_this_address'
-                  : 'you_trust_this_site'
-              }`,
-            )}`}
-          </Text>
-          <View style={styles.contactWrapper}>
-            <Text>{strings('nickname.contract')}: </Text>
-            <TouchableOpacity
-              style={styles.addressWrapper}
-              onPress={this.copyContractAddress}
-              testID={'contract-address'}
-            >
-              <Identicon address={this.state.transaction.to} diameter={20} />
-              {this.props.nicknameExists ? (
-                <Text numberOfLines={1} style={styles.address}>
-                  {this.props.nickname}
-                </Text>
-              ) : (
-                <EthereumAddress
-                  address={this.state.transaction.to}
-                  style={styles.address}
-                  type={'short'}
-                />
-              )}
-              <Feather name="copy" size={18} style={styles.actionIcon} />
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.nickname} onPress={this.toggleDisplay}>
-            {this.props.nicknameExists ? 'Edit' : 'Add'}{' '}
-            {strings('nickname.nickname')}
-          </Text>
           <View style={styles.actionViewWrapper}>
             <ActionView
               confirmButtonMode="confirm"
               cancelText={strings('transaction.reject')}
-              confirmText={strings('transactions.approve')}
+              confirmText={confirmText}
               onCancelPress={this.onCancelPress}
               onConfirmPress={this.onConfirmPress}
-              confirmDisabled={Boolean(gasError) || transactionConfirmed}
+              confirmDisabled={shouldDisableConfirmButton}
             >
-              <View style={styles.paddingHorizontal}>
-                <AccountInfoCard fromAddress={from} />
-                <View style={styles.section}>
-                  <TransactionReview
-                    gasSelected={gasSelected}
-                    primaryCurrency={primaryCurrency}
-                    hideTotal
-                    noMargin
-                    onEdit={this.edit}
-                    chainId={this.props.chainId}
-                    onUpdatingValuesStart={onUpdatingValuesStart}
-                    onUpdatingValuesEnd={onUpdatingValuesEnd}
-                    animateOnChange={animateOnChange}
-                    isAnimating={isAnimating}
-                    gasEstimationReady={gasEstimationReady}
-                    legacy={!showFeeMarket}
-                    gasObject={
-                      !showFeeMarket ? legacyGasObject : eip1559GasObject
-                    }
-                    updateTransactionState={updateTransactionState}
-                    onlyGas
-                    multiLayerL1FeeTotal={multiLayerL1FeeTotal}
+              <View>
+                {from && (
+                  <ApproveTransactionHeader
+                    origin={origin}
+                    url={activeTabUrl}
+                    from={from}
+                    asset={{
+                      address: to,
+                      symbol: tokenSymbol,
+                      decimals: tokenDecimals,
+                      standard: tokenStandard,
+                    }}
                   />
+                )}
+                <Text
+                  variant={TextVariant.HeadingMD}
+                  style={styles.title}
+                  testID={'allow-access'}
+                >
+                  {strings(
+                    `spend_limit_edition.${
+                      originIsDeeplink
+                        ? 'allow_to_address_access'
+                        : spendCapCreated
+                        ? 'review_spend_cap'
+                        : tokenStandard === ERC721 || tokenStandard === ERC1155
+                        ? 'allow_to_access'
+                        : 'set_spend_cap'
+                    }`,
+                  )}
+                </Text>
+                <View style={styles.tokenContainer}>
+                  {!fetchingUpdateDone && (
+                    <Text
+                      variant={TextVariant.HeadingMD}
+                      style={styles.alignText}
+                    >
+                      {strings('spend_limit_edition.token')}
+                    </Text>
+                  )}
+                  {tokenStandard === ERC20 && (
+                    <>
+                      {tokenImage ? (
+                        <Avatar
+                          variant={AvatarVariants.Token}
+                          size={AvatarSize.Md}
+                          imageSource={{ uri: tokenImage }}
+                        />
+                      ) : (
+                        <Identicon address={to} diameter={25} />
+                      )}
+                      <Text
+                        variant={TextVariant.HeadingMD}
+                        style={styles.symbol}
+                      >
+                        {tokenSymbol}
+                      </Text>
+                    </>
+                  )}
+                  {tokenStandard === ERC721 || tokenStandard === ERC1155 ? (
+                    hasBlockExplorer ? (
+                      <ButtonLink
+                        onPress={showBlockExplorer}
+                        label={
+                          <Text
+                            variant={TextVariant.HeadingMD}
+                            style={styles.buttonColor}
+                          >
+                            {tokenLabel}
+                          </Text>
+                        }
+                      />
+                    ) : (
+                      <Text variant={TextVariant.HeadingMD}>{tokenLabel}</Text>
+                    )
+                  ) : null}
+                </View>
+                {(tokenStandard === ERC721 || tokenStandard === ERC1155) && (
+                  <Text reset style={styles.explanation}>
+                    {`${strings(
+                      `spend_limit_edition.${
+                        originIsDeeplink
+                          ? 'you_trust_this_address'
+                          : 'you_trust_this_site'
+                      }`,
+                    )}`}
+                  </Text>
+                )}
+                <ButtonLink
+                  variant={TextVariant.BodyMD}
+                  onPress={showVerifyContractDetails}
+                  style={styles.verifyContractLink}
+                  label={strings(
+                    'contract_allowance.token_allowance.verify_third_party_details',
+                  )}
+                />
+                <View style={styles.paddingHorizontal}>
+                  <View style={styles.section}>
+                    {!tokenStandard ? (
+                      <SkeletonText style={styles.skeletalView} />
+                    ) : (
+                      tokenStandard === ERC20 && (
+                        <CustomSpendCap
+                          ticker={tokenSymbol}
+                          dappProposedValue={originalApproveAmount}
+                          tokenSpendValue={tokenSpendValue}
+                          accountBalance={tokenBalance}
+                          domain={host}
+                          isEditDisabled={Boolean(spendCapCreated)}
+                          editValue={this.goToSpendCap}
+                          onInputChanged={(value) =>
+                            this.setState({
+                              tokenSpendValue: value.replace(/[^0-9.]/g, ''),
+                            })
+                          }
+                        />
+                      )
+                    )}
+                    {((tokenStandard === ERC20 && spendCapCreated) ||
+                      tokenStandard === ERC721 ||
+                      tokenStandard === ERC1155) && (
+                      <View style={styles.transactionWrapper}>
+                        <TransactionReview
+                          gasSelected={gasSelected}
+                          primaryCurrency={primaryCurrency}
+                          hideTotal
+                          noMargin
+                          onEdit={this.edit}
+                          chainId={this.props.chainId}
+                          onUpdatingValuesStart={onUpdatingValuesStart}
+                          onUpdatingValuesEnd={onUpdatingValuesEnd}
+                          animateOnChange={animateOnChange}
+                          isAnimating={isAnimating}
+                          gasEstimationReady={gasEstimationReady}
+                          legacy={!showFeeMarket}
+                          gasObject={
+                            !showFeeMarket ? legacyGasObject : eip1559GasObject
+                          }
+                          updateTransactionState={updateTransactionState}
+                          onlyGas
+                          multiLayerL1FeeTotal={multiLayerL1FeeTotal}
+                        />
+                      </View>
+                    )}
+                    {gasError && (
+                      <View style={styles.errorWrapper}>
+                        {isTestNetwork || isNativeTokenBuySupported ? (
+                          <TouchableOpacity onPress={errorPress}>
+                            <Text reset style={styles.error}>
+                              {gasError}
+                            </Text>
 
-                  {gasError && (
-                    <View style={styles.errorWrapper}>
-                      {isTestNetwork || allowedToBuy(network) ? (
-                        <TouchableOpacity onPress={errorPress}>
+                            {over && (
+                              <Text
+                                reset
+                                style={[styles.error, styles.underline]}
+                              >
+                                {errorLinkText}
+                              </Text>
+                            )}
+                          </TouchableOpacity>
+                        ) : (
                           <Text reset style={styles.error}>
                             {gasError}
                           </Text>
-
-                          {over && (
-                            <Text
-                              reset
-                              style={[styles.error, styles.underline]}
-                            >
-                              {errorLinkText}
-                            </Text>
-                          )}
-                        </TouchableOpacity>
-                      ) : (
-                        <Text reset style={styles.error}>
-                          {gasError}
-                        </Text>
-                      )}
-                    </View>
-                  )}
-                  {!gasError && (
-                    <TouchableOpacity
-                      style={styles.actionTouchable}
-                      onPress={this.toggleViewDetails}
-                    >
-                      <View>
-                        <Text reset style={styles.viewDetailsText}>
-                          {strings('spend_limit_edition.view_details')}
-                        </Text>
+                        )}
                       </View>
-                    </TouchableOpacity>
-                  )}
+                    )}
+                    {!gasError && (
+                      <TouchableOpacity
+                        style={styles.actionTouchable}
+                        onPress={this.toggleViewDetails}
+                      >
+                        <View style={styles.iconContainer}>
+                          <Text reset style={styles.viewDetailsText}>
+                            {strings(
+                              'spend_limit_edition.view_transaction_details',
+                            )}
+                          </Text>
+                          <IonicIcon
+                            name="ios-arrow-down"
+                            size={16}
+                            style={styles.iconDropdown}
+                          />
+                        </View>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
               </View>
             </ActionView>
           </View>
         </View>
-        {this.renderGasTooltip()}
       </>
     );
   };
@@ -781,17 +953,12 @@ class ApproveTransactionReview extends PureComponent {
       host,
       method,
       viewData,
-      tokenSymbol,
-      originalApproveAmount,
-      spendLimitUnlimitedSelected,
-      spendLimitCustomValue,
+      tokenSpendValue,
+      token: { tokenStandard, tokenSymbol, tokenValue, tokenName },
     } = this.state;
     const {
       transaction: { to, data },
     } = this.props;
-    const allowance =
-      (!spendLimitUnlimitedSelected && spendLimitCustomValue) ||
-      originalApproveAmount;
     return (
       <TransactionReviewDetailsCard
         toggleViewDetails={this.toggleViewDetails}
@@ -799,13 +966,93 @@ class ApproveTransactionReview extends PureComponent {
         copyContractAddress={this.copyContractAddress}
         nickname={nickname}
         nicknameExists={nicknameExists}
-        address={renderShortAddress(to)}
+        address={to}
         host={host}
-        allowance={allowance}
+        tokenSpendValue={tokenSpendValue}
         tokenSymbol={tokenSymbol}
         data={data}
+        tokenValue={tokenValue}
+        tokenName={tokenName}
+        tokenStandard={tokenStandard}
         method={method}
         displayViewData={viewData}
+      />
+    );
+  };
+
+  renderVerifyContractDetails = () => {
+    const {
+      providerType,
+      providerRpcTarget,
+      savedContactListToArray,
+      toggleModal,
+      closeVerifyContractDetails,
+      frequentRpcList,
+    } = this.props;
+    const {
+      transaction: { to },
+      showBlockExplorerModal,
+      spenderAddress,
+      token: { tokenSymbol },
+    } = this.state;
+
+    const toggleBlockExplorerModal = (address) => {
+      closeVerifyContractDetails();
+      this.setState({
+        showBlockExplorerModal: !showBlockExplorerModal,
+        address,
+      });
+    };
+
+    const showNickname = (address) => {
+      toggleModal(address);
+    };
+
+    return (
+      <VerifyContractDetails
+        closeVerifyContractView={closeVerifyContractDetails}
+        toggleBlockExplorer={toggleBlockExplorerModal}
+        contractAddress={spenderAddress}
+        tokenAddress={to}
+        showNickname={showNickname}
+        savedContactListToArray={savedContactListToArray}
+        copyAddress={this.copyContractAddress}
+        providerType={providerType}
+        tokenSymbol={tokenSymbol}
+        providerRpcTarget={providerRpcTarget}
+        frequentRpcList={frequentRpcList}
+        tokenStandard={this.state.token?.tokenStandard}
+      />
+    );
+  };
+
+  renderBlockExplorerView = () => {
+    const {
+      providerType,
+      showVerifyContractDetails,
+      frequentRpcList,
+      providerRpcTarget,
+    } = this.props;
+    const { showBlockExplorerModal, address } = this.state;
+
+    const styles = this.getStyles();
+    const closeModal = () => {
+      showVerifyContractDetails();
+      this.setState({
+        showBlockExplorerModal: !showBlockExplorerModal,
+      });
+    };
+
+    return (
+      <ShowBlockExplorer
+        setIsBlockExplorerVisible={closeModal}
+        type={providerType}
+        address={address}
+        headerWrapperStyle={styles.headerWrapper}
+        headerTextStyle={styles.headerText}
+        iconStyle={styles.icon}
+        providerRpcTarget={providerRpcTarget}
+        frequentRpcList={frequentRpcList}
       />
     );
   };
@@ -830,8 +1077,21 @@ class ApproveTransactionReview extends PureComponent {
   };
 
   onConfirmPress = () => {
+    const {
+      spendCapCreated,
+      token: { tokenStandard },
+    } = this.state;
     const { onConfirm } = this.props;
-    onConfirm && onConfirm();
+
+    if (tokenStandard === ERC20 && !spendCapCreated) {
+      AnalyticsV2.trackEvent(
+        MetaMetricsEvents.APPROVAL_PERMISSION_UPDATED,
+        this.getAnalyticsParams(),
+      );
+      return this.setState({ spendCapCreated: true });
+    }
+
+    return onConfirm && onConfirm();
   };
 
   goToFaucet = () => {
@@ -875,14 +1135,17 @@ class ApproveTransactionReview extends PureComponent {
   }
 
   render = () => {
-    const { viewDetails, editPermissionVisible } = this.state;
-    const { isSigningQRObject } = this.props;
+    const { viewDetails, showBlockExplorerModal } = this.state;
+    const { isSigningQRObject, shouldVerifyContractDetails } = this.props;
+
     return (
       <View>
         {viewDetails
           ? this.renderTransactionReview()
-          : editPermissionVisible
-          ? this.renderEditPermission()
+          : shouldVerifyContractDetails
+          ? this.renderVerifyContractDetails()
+          : showBlockExplorerModal
+          ? this.renderBlockExplorerView()
           : isSigningQRObject
           ? this.renderQRDetails()
           : this.renderDetails()}
@@ -892,19 +1155,26 @@ class ApproveTransactionReview extends PureComponent {
 }
 
 const mapStateToProps = (state) => ({
-  accounts: state.engine.backgroundState.AccountTrackerController.accounts,
-  ticker: state.engine.backgroundState.NetworkController.provider.ticker,
+  ticker: selectTicker(state),
+  frequentRpcList:
+    state.engine.backgroundState.PreferencesController.frequentRpcList,
+  provider: state.engine.backgroundState.NetworkController.provider,
   transaction: getNormalizedTxState(state),
   accountsLength: Object.keys(
     state.engine.backgroundState.AccountTrackerController.accounts || {},
   ).length,
   tokensLength: state.engine.backgroundState.TokensController.tokens.length,
-  providerType: state.engine.backgroundState.NetworkController.provider.type,
+  providerType: selectProviderType(state),
+  providerRpcTarget: selectRpcTarget(state),
   primaryCurrency: state.settings.primaryCurrency,
   activeTabUrl: getActiveTabUrl(state),
-  network: state.engine.backgroundState.NetworkController.network,
-  chainId: state.engine.backgroundState.NetworkController.provider.chainId,
+  network: selectNetwork(state),
+  chainId: selectChainId(state),
   tokenList: getTokenList(state),
+  isNativeTokenBuySupported: isNetworkBuyNativeTokenSupported(
+    selectChainId(state),
+    getRampNetworks(state),
+  ),
 });
 
 const mapDispatchToProps = (dispatch) => ({

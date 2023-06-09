@@ -5,17 +5,16 @@ import ModalNavbarTitle from '../ModalNavbarTitle';
 import AccountRightButton from '../AccountRightButton';
 import {
   Alert,
-  Text,
-  TouchableOpacity,
-  View,
-  StyleSheet,
   Image,
   InteractionManager,
   Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { fontStyles, colors as importedColors } from '../../../styles/common';
+import { colors as importedColors, fontStyles } from '../../../styles/common';
 import IonicIcon from 'react-native-vector-icons/Ionicons';
-import AntIcon from 'react-native-vector-icons/AntDesign';
 import EvilIcons from 'react-native-vector-icons/EvilIcons';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { scale } from 'react-native-size-matters';
@@ -30,9 +29,9 @@ import PickerNetwork from '../../../component-library/components/Pickers/PickerN
 import BrowserUrlBar from '../BrowserUrlBar';
 import generateTestId from '../../../../wdio/utils/generateTestId';
 import {
-  WALLET_VIEW_BURGER_ICON_ID,
   HAMBURGER_MENU_BUTTON,
   NAVBAR_NETWORK_BUTTON,
+  WALLET_VIEW_BURGER_ICON_ID,
 } from '../../../../wdio/screen-objects/testIDs/Screens/WalletView.testIds';
 import {
   NAV_ANDROID_BACK_BUTTON,
@@ -40,12 +39,21 @@ import {
   NETWORK_SCREEN_CLOSE_ICON,
 } from '../../../../wdio/screen-objects/testIDs/Screens/NetworksScreen.testids';
 import { SEND_CANCEL_BUTTON } from '../../../../wdio/screen-objects/testIDs/Screens/SendScreen.testIds';
-import { CONTACT_EDIT_BUTTON } from '../../../../wdio/screen-objects/testIDs/Screens/Contacts.testids';
-import { ASSET_BACK_BUTTON } from '../../../../wdio/screen-objects/testIDs/Screens/AssetSearch.testIds';
+import { ASSET_BACK_BUTTON } from '../../../../wdio/screen-objects/testIDs/Screens/TokenOverviewScreen.testIds';
 import {
   PAYMENT_REQUEST_CLOSE_BUTTON,
   REQUEST_SEARCH_RESULTS_BACK_BUTTON,
 } from '../../../../wdio/screen-objects/testIDs/Screens/RequestToken.testIds';
+import { BACK_BUTTON_SIMPLE_WEBVIEW } from '../../../../wdio/screen-objects/testIDs/Components/SimpleWebView.testIds';
+import ButtonIcon, {
+  ButtonIconSizes,
+  ButtonIconVariants,
+} from '../../../component-library/components/Buttons/ButtonIcon';
+import {
+  IconName,
+  IconSize,
+} from '../../../component-library/components/Icons/Icon';
+import { EDIT_BUTTON } from '../../../../wdio/screen-objects/testIDs/Common.testIds';
 
 const trackEvent = (event) => {
   InteractionManager.runAfterInteractions(() => {
@@ -92,7 +100,6 @@ const styles = StyleSheet.create({
     paddingVertical: Device.isAndroid() ? 14 : 8,
   },
   infoButton: {
-    paddingLeft: Device.isAndroid() ? 22 : 18,
     paddingRight: Device.isAndroid() ? 22 : 18,
     marginTop: 5,
   },
@@ -129,7 +136,7 @@ const metamask_fox = require('../../../images/fox.png'); // eslint-disable-line
 export function getTransactionsNavbarOptions(
   title,
   themeColors,
-  navigation,
+  _,
   selectedAddress,
   handleRightButtonPress,
 ) {
@@ -149,22 +156,9 @@ export function getTransactionsNavbarOptions(
     },
   });
 
-  function handleLeftButtonPress() {
-    return navigation?.pop();
-  }
-
   return {
     headerTitle: () => <NavbarTitle title={title} />,
-    headerLeft: () => (
-      <TouchableOpacity
-        onPress={handleLeftButtonPress}
-        style={styles.backButton}
-      >
-        <Text style={innerStyles.headerButtonText}>
-          {strings('navigation.close')}
-        </Text>
-      </TouchableOpacity>
-    ),
+    headerLeft: null,
     headerRight: () => (
       <AccountRightButton
         selectedAddress={selectedAddress}
@@ -206,10 +200,12 @@ export function getNavigationOptionsTitle(
       elevation: 0,
     },
   });
+
   function navigationPop() {
     if (navigationPopEvent) trackEvent(navigationPopEvent);
-    navigation.pop();
+    navigation.goBack();
   }
+
   return {
     title,
     headerTitleStyle: innerStyles.headerTitleStyle,
@@ -272,9 +268,11 @@ export function getEditableOptions(title, navigation, route, themeColors) {
       elevation: 0,
     },
   });
+
   function navigationPop() {
     navigation.pop();
   }
+
   const rightAction = route.params?.dispatch;
   const editMode = route.params?.editMode === 'edit';
   const addMode = route.params?.mode === 'add';
@@ -299,7 +297,7 @@ export function getEditableOptions(title, navigation, route, themeColors) {
         <TouchableOpacity
           onPress={rightAction}
           style={styles.backButton}
-          {...generateTestId(Platform, CONTACT_EDIT_BUTTON)}
+          {...generateTestId(Platform, EDIT_BUTTON)}
         >
           <Text style={innerStyles.headerButtonText}>
             {editMode
@@ -801,6 +799,7 @@ export function getOptinMetricsNavbarOptions(themeColors) {
     headerTintColor: themeColors.primary.default,
   };
 }
+
 /**
  * Function that returns the navigation options
  * for our closable screens,
@@ -833,9 +832,11 @@ export function getClosableNavigationOptions(
       color: themeColors.text.default,
     },
   });
+
   function navigationPop() {
     navigation.pop();
   }
+
   return {
     title,
     headerTitleStyle: innerStyles.headerTitleStyle,
@@ -990,13 +991,14 @@ export function getWalletNavbarOptions(
       </TouchableOpacity>
     ),
     headerRight: () => (
-      <TouchableOpacity
-        style={styles.infoButton}
-        // eslint-disable-next-line
+      <ButtonIcon
+        variant={ButtonIconVariants.Primary}
         onPress={openQRScanner}
-      >
-        <AntIcon name="scan1" size={28} style={innerStyles.headerIcon} />
-      </TouchableOpacity>
+        iconName={IconName.Scan}
+        style={styles.infoButton}
+        size={IconSize.Xl}
+        testID="wallet-scan-button"
+      />
     ),
     headerStyle: innerStyles.headerStyle,
     headerTintColor: themeColors.primary.default,
@@ -1021,12 +1023,20 @@ export function getNetworkNavbarOptions(
   themeColors,
   onRightPress = undefined,
   disableNetwork = false,
+  contentOffset = 0,
 ) {
   const innerStyles = StyleSheet.create({
     headerStyle: {
       backgroundColor: themeColors.background.default,
       shadowColor: importedColors.transparent,
       elevation: 0,
+    },
+    headerShadow: {
+      elevation: 2,
+      shadowColor: themeColors.background.primary,
+      shadowOpacity: contentOffset < 20 ? contentOffset / 100 : 0.2,
+      shadowOffset: { height: 4, width: 0 },
+      shadowRadius: 8,
     },
     headerIcon: {
       color: themeColors.primary.default,
@@ -1048,8 +1058,8 @@ export function getNetworkNavbarOptions(
         {...generateTestId(Platform, ASSET_BACK_BUTTON)}
       >
         <IonicIcon
-          name={Device.isAndroid() ? 'md-arrow-back' : 'ios-arrow-back'}
-          size={Device.isAndroid() ? 24 : 28}
+          name={'ios-close'}
+          size={38}
           style={innerStyles.headerIcon}
         />
       </TouchableOpacity>
@@ -1066,7 +1076,10 @@ export function getNetworkNavbarOptions(
           // eslint-disable-next-line no-mixed-spaces-and-tabs
         )
       : () => <View />,
-    headerStyle: innerStyles.headerStyle,
+    headerStyle: [
+      innerStyles.headerStyle,
+      contentOffset && innerStyles.headerShadow,
+    ],
   };
 }
 
@@ -1106,6 +1119,7 @@ export function getWebviewNavbar(navigation, route, themeColors) {
         <TouchableOpacity
           onPress={() => navigation.pop()}
           style={styles.backButton}
+          {...generateTestId(Platform, BACK_BUTTON_SIMPLE_WEBVIEW)}
         >
           <IonicIcon
             name={'md-arrow-back'}
@@ -1357,6 +1371,7 @@ export function getSwapsAmountNavbar(navigation, route, themeColors) {
     headerStyle: innerStyles.headerStyle,
   };
 }
+
 export function getSwapsQuotesNavbar(navigation, route, themeColors) {
   const innerStyles = StyleSheet.create({
     headerButtonText: {
@@ -1488,6 +1503,7 @@ export function getFiatOnRampAggNavbar(
           onPress={leftAction}
           style={styles.backButton}
           accessibilityRole="button"
+          accessible
         >
           <IonicIcon
             name={'md-arrow-back'}
@@ -1500,6 +1516,7 @@ export function getFiatOnRampAggNavbar(
           onPress={leftAction}
           style={styles.closeButton}
           accessibilityRole="button"
+          accessible
         >
           <Text style={innerStyles.headerButtonText}>{leftActionText}</Text>
         </TouchableOpacity>
@@ -1513,6 +1530,7 @@ export function getFiatOnRampAggNavbar(
         }}
         style={styles.closeButton}
         accessibilityRole="button"
+        accessible
       >
         <Text style={innerStyles.headerButtonText}>{navigationCancelText}</Text>
       </TouchableOpacity>
@@ -1521,3 +1539,52 @@ export function getFiatOnRampAggNavbar(
     headerTitleStyle: innerStyles.headerTitleStyle,
   };
 }
+
+export const getEditAccountNameNavBarOptions = (goBack, themeColors) => {
+  const innerStyles = StyleSheet.create({
+    headerStyle: {
+      backgroundColor: themeColors.background.default,
+      shadowColor: importedColors.transparent,
+      elevation: 0,
+    },
+    headerTitleStyle: {
+      fontSize: 18,
+      ...fontStyles.normal,
+      color: themeColors.text.default,
+    },
+  });
+
+  return {
+    headerTitle: <Text>{strings('account_actions.edit_name')}</Text>,
+    headerLeft: null,
+    headerRight: () => (
+      <ButtonIcon
+        iconName={IconName.Close}
+        size={ButtonIconSizes.Lg}
+        onPress={goBack}
+        style={styles.closeButton}
+      />
+    ),
+    ...innerStyles,
+  };
+};
+
+export const getSettingsNavigationOptions = (title, themeColors) => {
+  const innerStyles = StyleSheet.create({
+    headerStyle: {
+      backgroundColor: themeColors.background.default,
+      shadowColor: importedColors.transparent,
+      elevation: 0,
+    },
+    headerTitleStyle: {
+      fontSize: 20,
+      color: themeColors.text.default,
+      ...fontStyles.normal,
+    },
+  });
+  return {
+    headerLeft: null,
+    headerTitle: <Text>{title}</Text>,
+    ...innerStyles,
+  };
+};

@@ -9,6 +9,7 @@ import numberToBN from 'number-to-bn';
 import BigNumber from 'bignumber.js';
 
 import currencySymbols from '../currency-symbols.json';
+import { isZero } from '../lodash';
 export { BNToHex, hexToBN };
 
 // Big Number Constants
@@ -420,8 +421,9 @@ export function renderToGwei(value, unit = 'ether') {
 
 /**
  * Converts wei expressed as a BN instance into a human-readable fiat string
- *
- * @param {number} wei - BN corresponding to an amount of wei
+ * TODO: wei should be a BN instance, but we're not sure if it's always the case
+//
+ * @param {number | BN} wei - BN corresponding to an amount of wei
  * @param {number} conversionRate - ETH to current currency conversion rate
  * @param {string} currencyCode - Current currency code to display
  * @returns {string} - Currency-formatted string
@@ -434,17 +436,11 @@ export function weiToFiat(
 ) {
   if (!conversionRate) return undefined;
   if (!wei || !isBN(wei) || !conversionRate) {
-    if (currencySymbols[currencyCode]) {
-      return `${currencySymbols[currencyCode]}${0.0}`;
-    }
-    return `0.00 ${currencyCode}`;
+    return addCurrencySymbol(0, currencyCode);
   }
   decimalsToShow = (currencyCode === 'usd' && 2) || undefined;
   const value = weiToFiatNumber(wei, conversionRate, decimalsToShow);
-  if (currencySymbols[currencyCode]) {
-    return `${currencySymbols[currencyCode]}${value}`;
-  }
-  return `${value} ${currencyCode}`;
+  return addCurrencySymbol(value, currencyCode);
 }
 
 /**
@@ -454,10 +450,41 @@ export function weiToFiat(
  * @param {string} currencyCode Current currency code to display
  * @returns {string} - Currency-formatted string
  */
-export function addCurrencySymbol(amount, currencyCode) {
-  if (currencyCode === 'usd') {
+export function addCurrencySymbol(
+  amount,
+  currencyCode,
+  extendDecimals = false,
+) {
+  if (extendDecimals) {
+    if (isNumberScientificNotationWhenString(amount)) {
+      amount = amount.toFixed(18);
+    }
+
+    // if bigger than 0.01, show 2 decimals
+    if (amount >= 0.01 || amount <= -0.01) {
+      amount = parseFloat(amount).toFixed(2);
+    }
+
+    // if less than 0.01, show all the decimals that are zero except the trailing zeros, and 3 decimals for the rest that are not zero
+    if ((amount < 0.01 && amount > 0) || (amount > -0.01 && amount < 0)) {
+      const decimalString = amount.toString().split('.')[1];
+      if (decimalString && decimalString.length > 1) {
+        const firstNonZeroDecimal = decimalString.indexOf(
+          decimalString.match(/[1-9]/)[0],
+        );
+        if (firstNonZeroDecimal > 0) {
+          amount = parseFloat(amount).toFixed(firstNonZeroDecimal + 3);
+          // remove trailing zeros
+          amount = amount.replace(/\.?0+$/, '');
+        }
+      }
+    }
+  }
+
+  if (currencyCode === 'usd' && !extendDecimals) {
     amount = parseFloat(amount).toFixed(2);
   }
+
   if (currencySymbols[currencyCode]) {
     return `${currencySymbols[currencyCode]}${amount}`;
   }
@@ -777,4 +804,16 @@ export const calculateEthFeeForMultiLayer = ({
   return new BigNumber(multiLayerL1FeeTotalDecEth)
     .plus(new BigNumber(ethFee ?? 0))
     .toString(10);
+};
+
+/**
+ *
+ * @param {number|string|object} value - Value to check
+ * @returns {boolean} - true if value is zero
+ */
+export const isZeroValue = (value) => {
+  if (value === null || value === undefined) {
+    return false;
+  }
+  return value === '0x0' || (isBN(value) && value.isZero()) || isZero(value);
 };

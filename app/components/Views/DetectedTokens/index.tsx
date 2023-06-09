@@ -131,7 +131,7 @@ const DetectedTokens = () => {
                   token_address: address,
                   token_symbol: symbol,
                   chain_id: getDecimalChainId(
-                    NetworkController?.state?.provider?.chainId,
+                    NetworkController?.state?.providerConfig?.chainId,
                   ),
                   source: 'detected',
                 }),
@@ -166,7 +166,7 @@ const DetectedTokens = () => {
         asset_type: 'token',
         tokens: detectedTokensForAnalytics,
         chain_id: getDecimalChainId(
-          NetworkController?.state?.provider?.chainId,
+          NetworkController?.state?.providerConfig?.chainId,
         ),
       }),
     );
@@ -263,7 +263,9 @@ const DetectedTokens = () => {
     AnalyticsV2.trackEvent(MetaMetricsEvents.TOKEN_IMPORT_CANCELED, {
       source: 'detected',
       tokens: detectedTokensForAnalytics,
-      chain_id: getDecimalChainId(NetworkController?.state?.provider?.chainId),
+      chain_id: getDecimalChainId(
+        NetworkController?.state?.providerConfig?.chainId,
+      ),
     });
   };
 

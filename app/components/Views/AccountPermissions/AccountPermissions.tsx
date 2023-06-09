@@ -32,8 +32,8 @@ import AnalyticsV2 from '../../../util/analyticsV2';
 import { MetaMetricsEvents } from '../../../core/Analytics';
 import { useAccounts, Account } from '../../hooks/useAccounts';
 import getAccountNameWithENS from '../../../util/accounts';
-import { IconName } from '../../../component-library/components/Icon';
-import { getUrlObj } from '../../../util/browser';
+import { IconName } from '../../../component-library/components/Icons/Icon';
+import { getUrlObj, prefixUrlWithProtocol } from '../../../util/browser';
 import { getActiveTabUrl } from '../../../util/transactions';
 import { strings } from '../../../../locales/i18n';
 import { AvatarAccountType } from '../../../component-library/components/Avatars/Avatar/variants/AvatarAccount';
@@ -80,10 +80,12 @@ const AccountPermissions = (props: AccountPermissionsProps) => {
   const secureIcon = useMemo(
     () =>
       (getUrlObj(origin) as URL).protocol === 'https:'
-        ? IconName.LockFilled
-        : IconName.LockSlashFilled,
+        ? IconName.Lock
+        : IconName.LockSlash,
     [origin],
   );
+
+  const urlWithProtocol = prefixUrlWithProtocol(hostname);
   /**
    * Get image url from favicon api.
    */
@@ -326,6 +328,7 @@ const AccountPermissions = (props: AccountPermissionsProps) => {
         selectedAddresses={[activeAddress]}
         favicon={favicon}
         hostname={hostname}
+        urlWithProtocol={urlWithProtocol}
         secureIcon={secureIcon}
         accountAvatarType={accountAvatarType}
       />
@@ -340,6 +343,7 @@ const AccountPermissions = (props: AccountPermissionsProps) => {
       hideSheet,
       favicon,
       hostname,
+      urlWithProtocol,
       secureIcon,
       accountAvatarType,
     ],
@@ -355,9 +359,10 @@ const AccountPermissions = (props: AccountPermissionsProps) => {
         isLoading={isLoading}
         onUserAction={setUserIntent}
         favicon={favicon}
-        hostname={hostname}
+        urlWithProtocol={urlWithProtocol}
         secureIcon={secureIcon}
         isAutoScrollEnabled={false}
+        onBack={() => setPermissionsScreen(AccountPermissionsScreens.Connected)}
       />
     ),
     [
@@ -367,7 +372,7 @@ const AccountPermissions = (props: AccountPermissionsProps) => {
       accountsFilteredByPermissions,
       setUserIntent,
       favicon,
-      hostname,
+      urlWithProtocol,
       secureIcon,
     ],
   );
@@ -381,6 +386,7 @@ const AccountPermissions = (props: AccountPermissionsProps) => {
         permittedAddresses={permittedAccountsByHostname}
         isLoading={isLoading}
         favicon={favicon}
+        urlWithProtocol={urlWithProtocol}
         hostname={hostname}
         secureIcon={secureIcon}
         accountAvatarType={accountAvatarType}
@@ -394,6 +400,7 @@ const AccountPermissions = (props: AccountPermissionsProps) => {
       setPermissionsScreen,
       favicon,
       hostname,
+      urlWithProtocol,
       secureIcon,
       accountAvatarType,
     ],

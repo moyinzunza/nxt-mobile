@@ -18,14 +18,22 @@ import {
   ENSCache,
   isDefaultAccountName,
 } from '../../util/ENSUtils';
-import { isMainnetByChainId } from '../../util/networks';
+import {
+  isMainnetByChainId,
+  findBlockExplorerForRpc,
+} from '../../util/networks';
+import { RPC } from '../../constants/network';
 import { collectConfusables } from '../../util/confusables';
 import {
   CONTACT_ALREADY_SAVED,
   SYMBOL_ERROR,
 } from '../../../app/constants/error';
 import { PROTOCOLS } from '../../constants/deeplinks';
+import TransactionTypes from '../../core/TransactionTypes';
 
+const {
+  ASSET: { ERC721, ERC1155 },
+} = TransactionTypes;
 /**
  * Returns full checksummed address
  *
@@ -464,3 +472,36 @@ export async function getAddress(toAccount, network) {
   }
   return null;
 }
+
+export const getTokenDetails = async (tokenAddress, userAddress, tokenId) => {
+  const { AssetsContractController } = Engine.context;
+  const tokenData = await AssetsContractController.getTokenStandardAndDetails(
+    tokenAddress,
+    userAddress,
+    tokenId,
+  );
+  const { standard, name, symbol, decimals } = tokenData;
+  if (standard === ERC721 || standard === ERC1155) {
+    return {
+      name,
+      symbol,
+      standard,
+    };
+  }
+  return {
+    symbol,
+    decimals,
+    standard,
+  };
+};
+
+export const shouldShowBlockExplorer = ({
+  providerType,
+  providerRpcTarget,
+  frequentRpcList,
+}) => {
+  if (providerType === RPC) {
+    return findBlockExplorerForRpc(providerRpcTarget, frequentRpcList);
+  }
+  return true;
+};

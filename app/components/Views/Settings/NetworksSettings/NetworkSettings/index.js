@@ -20,6 +20,7 @@ import Networks, {
   isprivateConnection,
   getAllNetworks,
   isSafeChainId,
+  getIsNetworkOnboarded,
 } from '../../../../../util/networks';
 import { getEtherscanBaseUrl } from '../../../../../util/etherscan';
 import StyledButton from '../../../../UI/StyledButton';
@@ -43,6 +44,7 @@ import InfoModal from '../../../../UI/Swaps/components/InfoModal';
 import {
   DEFAULT_MAINNET_CUSTOM_NAME,
   MAINNET,
+  NETWORKS_CHAIN_ID,
   PRIVATENETWORK,
   RPC,
 } from '../../../../../constants/network';
@@ -72,7 +74,9 @@ import {
 import Button, {
   ButtonVariants,
   ButtonSize,
+  ButtonWidthTypes,
 } from '../../../../../component-library/components/Buttons/Button';
+import { selectProviderConfig } from '../../../../../selectors/networkController';
 
 const createStyles = (colors) =>
   StyleSheet.create({
@@ -205,7 +209,8 @@ const createStyles = (colors) =>
   });
 
 const allNetworks = getAllNetworks();
-const allNetworksblockExplorerUrl = `https://api.infura.io/v1/jsonrpc/`;
+const allNetworksblockExplorerUrl = (networkName) =>
+  `https://${networkName}.infura.io/v3/`;
 /**
  * Main view for app configurations
  */
@@ -230,7 +235,7 @@ class NetworkSettings extends PureComponent {
     /**
      * returns an array of onboarded networks
      */
-    networkOnboardedState: PropTypes.array,
+    networkOnboardedState: PropTypes.object,
     /**
      * Indicates whether third party API mode is enabled
      */
@@ -240,9 +245,9 @@ class NetworkSettings extends PureComponent {
      */
     isCustomMainnet: PropTypes.bool,
     /**
-     * NetworkController povider object
+     * Current network provider configuration
      */
-    provider: PropTypes.object,
+    providerConfig: PropTypes.object,
   };
 
   state = {
@@ -282,7 +287,7 @@ class NetworkSettings extends PureComponent {
           ? strings('app_settings.networks_default_title')
           : strings('app_settings.networks_title'),
         navigation,
-        route?.params?.isFullScreenModal,
+        true,
         colors,
       ),
     );
@@ -316,7 +321,7 @@ class NetworkSettings extends PureComponent {
         nickname = networkInformation.name;
         chainId = networkInformation.chainId.toString();
         editable = false;
-        rpcUrl = allNetworksblockExplorerUrl + network;
+        rpcUrl = allNetworksblockExplorerUrl(network);
         ticker = strings('unit.eth');
         // Override values if UI is updating custom mainnet RPC URL.
         if (isCustomMainnet) {
@@ -334,6 +339,9 @@ class NetworkSettings extends PureComponent {
           networkInformation.rpcPrefs.blockExplorerUrl;
         ticker = networkInformation.ticker;
         editable = true;
+        if (networkInformation.chainId === NETWORKS_CHAIN_ID.LINEA_TESTNET) {
+          editable = false;
+        }
         rpcUrl = network;
       }
       const initialState =
@@ -499,13 +507,11 @@ class NetworkSettings extends PureComponent {
     const isNetworkExists = editable
       ? []
       : await this.checkIfNetworkExists(rpcUrl);
-    let isOnboarded = false;
-    const isNetworkOnboarded = networkOnboardedState.filter(
-      (item) => item.network === sanitizeUrl(rpcUrl),
+
+    const isOnboarded = getIsNetworkOnboarded(
+      stateChainId,
+      networkOnboardedState,
     );
-    if (isNetworkOnboarded.length === 0) {
-      isOnboarded = true;
-    }
 
     const nativeToken = ticker || PRIVATENETWORK;
     const networkType = nickname || rpcUrl;
@@ -768,11 +774,11 @@ class NetworkSettings extends PureComponent {
   };
 
   removeRpcUrl = () => {
-    const { navigation, provider } = this.props;
+    const { navigation, providerConfig } = this.props;
     const { rpcUrl } = this.state;
     if (
-      compareSanitizedUrl(rpcUrl, provider.rpcTarget) &&
-      provider.type === RPC
+      compareSanitizedUrl(rpcUrl, providerConfig.rpcTarget) &&
+      providerConfig.type === RPC
     ) {
       this.switchToMainnet();
     }
@@ -946,6 +952,7 @@ class NetworkSettings extends PureComponent {
               label={strings('app_settings.networks_default_cta')}
               size={ButtonSize.Lg}
               disabled={isActionDisabled}
+              width={ButtonWidthTypes.Full}
             />
           ) : (
             (addMode || editable) && (
@@ -1117,7 +1124,7 @@ const mapDispatchToProps = (dispatch) => ({
 });
 
 const mapStateToProps = (state) => ({
-  provider: state.engine.backgroundState.NetworkController.provider,
+  providerConfig: selectProviderConfig(state),
   frequentRpcList:
     state.engine.backgroundState.PreferencesController.frequentRpcList,
   networkOnboardedState: state.networkOnboarded.networkOnboardedState,

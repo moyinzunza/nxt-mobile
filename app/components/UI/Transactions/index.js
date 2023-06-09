@@ -1,52 +1,55 @@
-import React, { PureComponent } from 'react';
+import { CANCEL_RATE, SPEED_UP_RATE } from '@metamask/transaction-controller';
 import PropTypes from 'prop-types';
-import { connect } from 'react-redux';
+import React, { PureComponent } from 'react';
 import {
-  ScrollView,
   ActivityIndicator,
+  FlatList,
+  InteractionManager,
   RefreshControl,
   StyleSheet,
   Text,
   View,
-  FlatList,
-  Dimensions,
-  InteractionManager,
-  TouchableOpacity,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import Modal from 'react-native-modal';
+import { connect } from 'react-redux';
+import { strings } from '../../../../locales/i18n';
+import { showAlert } from '../../../actions/alert';
+import Button, {
+  ButtonSize,
+  ButtonVariants,
+} from '../../../component-library/components/Buttons/Button';
+import { NO_RPC_BLOCK_EXPLORER, RPC } from '../../../constants/network';
+import Engine from '../../../core/Engine';
+import NotificationManager from '../../../core/NotificationManager';
+import { collectibleContractsSelector } from '../../../reducers/collectibles';
 import {
-  getNetworkTypeById,
+  selectChainId,
+  selectProviderType,
+} from '../../../selectors/networkController';
+import { baseStyles, fontStyles } from '../../../styles/common';
+import { isQRHardwareAccount } from '../../../util/address';
+import Device from '../../../util/device';
+import Logger from '../../../util/Logger';
+import {
   findBlockExplorerForRpc,
+  getBlockExplorerAddressUrl,
   getBlockExplorerName,
   isMainnetByChainId,
 } from '../../../util/networks';
-import {
-  getEtherscanAddressUrl,
-  getEtherscanBaseUrl,
-} from '../../../util/etherscan';
-import { fontStyles, baseStyles } from '../../../styles/common';
-import { strings } from '../../../../locales/i18n';
-import TransactionElement from '../TransactionElement';
-import Engine from '../../../core/Engine';
-import { showAlert } from '../../../actions/alert';
-import NotificationManager from '../../../core/NotificationManager';
-import { CANCEL_RATE, SPEED_UP_RATE } from '@metamask/transaction-controller';
 import { renderFromWei } from '../../../util/number';
-import Device from '../../../util/device';
-import { RPC, NO_RPC_BLOCK_EXPLORER } from '../../../constants/network';
-import TransactionActionModal from '../TransactionActionModal';
-import Logger from '../../../util/Logger';
+import { mockTheme, ThemeContext } from '../../../util/theme';
 import { validateTransactionActionBalance } from '../../../util/transactions';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Modal from 'react-native-modal';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import RetryModal from './RetryModal';
-import UpdateEIP1559Tx from '../UpdateEIP1559Tx';
-import { collectibleContractsSelector } from '../../../reducers/collectibles';
-import { isQRHardwareAccount } from '../../../util/address';
-import { ThemeContext, mockTheme } from '../../../util/theme';
 import withQRHardwareAwareness from '../QRHardware/withQRHardwareAwareness';
+import TransactionActionModal from '../TransactionActionModal';
+import TransactionElement from '../TransactionElement';
+import UpdateEIP1559Tx from '../UpdateEIP1559Tx';
+import RetryModal from './RetryModal';
+import PriceChartContext, {
+  PriceChartProvider,
+} from '../AssetOverview/PriceChart/PriceChart.context';
 
-const createStyles = (colors) =>
+const createStyles = (colors, typography) =>
   StyleSheet.create({
     wrapper: {
       backgroundColor: colors.background.default,
@@ -59,8 +62,7 @@ const createStyles = (colors) =>
     emptyContainer: {
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: colors.background.default,
-      minHeight: Dimensions.get('window').height / 2,
+      paddingBottom: 24,
     },
     keyboardAwareWrapper: {
       flex: 1,
@@ -74,15 +76,17 @@ const createStyles = (colors) =>
       color: colors.text.muted,
       ...fontStyles.normal,
     },
-    viewMoreBody: {
-      marginBottom: 36,
-      marginTop: 24,
+    viewMoreWrapper: {
+      padding: 16,
     },
-    viewOnEtherscan: {
-      fontSize: 16,
-      color: colors.primary.default,
-      ...fontStyles.normal,
-      textAlign: 'center',
+    viewMoreButton: {
+      width: '100%',
+    },
+    disclaimerWrapper: {
+      padding: 16,
+    },
+    disclaimerText: {
+      ...typography.sBodySM,
     },
   });
 
@@ -173,6 +177,10 @@ class Transactions extends PureComponent {
     thirdPartyApiMode: PropTypes.bool,
     isSigningQRObject: PropTypes.bool,
     chainId: PropTypes.string,
+    /**
+     * On scroll past navbar callback
+     */
+    onScrollThroughContent: PropTypes.func,
   };
 
   static defaultProps = {
@@ -222,7 +230,7 @@ class Transactions extends PureComponent {
   updateBlockExplorer = () => {
     const {
       network: {
-        provider: { type, rpcTarget },
+        providerConfig: { type, rpcTarget },
       },
       frequentRpcList,
     } = this.props;
@@ -299,8 +307,8 @@ class Transactions extends PureComponent {
   };
 
   renderLoader = () => {
-    const colors = this.context.colors || mockTheme.colors;
-    const styles = createStyles(colors);
+    const { colors, typography } = this.context || mockTheme;
+    const styles = createStyles(colors, typography);
 
     return (
       <View style={styles.emptyContainer}>
@@ -310,26 +318,12 @@ class Transactions extends PureComponent {
   };
 
   renderEmpty = () => {
-    const colors = this.context.colors || mockTheme.colors;
-    const styles = createStyles(colors);
-
+    const { colors, typography } = this.context || mockTheme;
+    const styles = createStyles(colors, typography);
     return (
-      <ScrollView
-        contentContainerStyle={styles.emptyContainer}
-        refreshControl={
-          <RefreshControl
-            colors={[colors.primary.default]}
-            tintColor={colors.icon.default}
-            refreshing={this.state.refreshing}
-            onRefresh={this.onRefresh}
-          />
-        }
-      >
-        {this.props.header ? this.props.header : null}
-        <View style={styles.emptyContainer}>
-          <Text style={styles.text}>{strings('wallet.no_transactions')}</Text>
-        </View>
-      </ScrollView>
+      <View style={styles.emptyContainer}>
+        <Text style={styles.text}>{strings('wallet.no_transactions')}</Text>
+      </View>
     );
   };
 
@@ -338,23 +332,18 @@ class Transactions extends PureComponent {
       navigation,
       network: {
         network,
-        provider: { type },
+        providerConfig: { type },
       },
       selectedAddress,
       close,
     } = this.props;
     const { rpcBlockExplorer } = this.state;
     try {
-      let url;
-      let title;
-      if (type === RPC) {
-        url = `${rpcBlockExplorer}/address/${selectedAddress}`;
-        title = new URL(rpcBlockExplorer).hostname;
-      } else {
-        const networkResult = getNetworkTypeById(network);
-        url = getEtherscanAddressUrl(networkResult, selectedAddress);
-        title = getEtherscanBaseUrl(networkResult).replace('https://', '');
-      }
+      const { url, title } = getBlockExplorerAddressUrl(
+        type,
+        selectedAddress,
+        rpcBlockExplorer,
+      );
       navigation.push('Webview', {
         screen: 'SimpleWebview',
         params: {
@@ -372,13 +361,13 @@ class Transactions extends PureComponent {
   };
 
   renderViewMore = () => {
-    const colors = this.context.colors || mockTheme.colors;
-    const styles = createStyles(colors);
+    const { colors, typography } = this.context || mockTheme;
+    const styles = createStyles(colors, typography);
 
     const {
       chainId,
       network: {
-        provider: { type },
+        providerConfig: { type },
       },
     } = this.props;
     const blockExplorerText = () => {
@@ -396,15 +385,14 @@ class Transactions extends PureComponent {
     };
 
     return (
-      <View style={styles.viewMoreBody}>
-        <TouchableOpacity
+      <View style={styles.viewMoreWrapper}>
+        <Button
+          variant={ButtonVariants.Link}
+          size={ButtonSize.Lg}
+          label={blockExplorerText()}
+          style={styles.viewMoreButton}
           onPress={this.viewOnBlockExplore}
-          style={styles.touchableViewOnEtherscan}
-        >
-          <Text reset style={styles.viewOnEtherscan}>
-            {blockExplorerText()}
-          </Text>
-        </TouchableOpacity>
+        />
       </View>
     );
   };
@@ -462,6 +450,15 @@ class Transactions extends PureComponent {
     this.existingGas = null;
     this.cancelTxId = null;
     this.existingTx = null;
+  };
+
+  onScroll = (event) => {
+    const { nativeEvent } = event;
+    const { contentOffset } = nativeEvent;
+    // 16 is the top padding of the list
+    if (this.props.onScrollThroughContent) {
+      this.props.onScrollThroughContent(contentOffset.y);
+    }
   };
 
   handleSpeedUpTransactionFailure = (e) => {
@@ -574,8 +571,8 @@ class Transactions extends PureComponent {
 
   renderUpdateTxEIP1559Gas = (isCancel) => {
     const { isSigningQRObject } = this.props;
-    const colors = this.context.colors || mockTheme.colors;
-    const styles = createStyles(colors);
+    const { colors, typography } = this.context || mockTheme;
+    const styles = createStyles(colors, typography);
 
     if (!this.existingGas) return null;
     if (this.existingGas.isEIP1559Transaction && !isSigningQRObject) {
@@ -621,6 +618,25 @@ class Transactions extends PureComponent {
     }
   };
 
+  renderDisclaimer = () => {
+    const { colors, typography } = this.context || mockTheme;
+    const styles = createStyles(colors, typography);
+    return (
+      <View style={styles.disclaimerWrapper}>
+        <Text style={styles.disclaimerText}>
+          {strings('asset_overview.disclaimer')}
+        </Text>
+      </View>
+    );
+  };
+
+  renderFooter = () => (
+    <View>
+      {this.renderViewMore()}
+      {this.renderDisclaimer()}
+    </View>
+  );
+
   renderList = () => {
     const {
       submittedTransactions,
@@ -629,8 +645,8 @@ class Transactions extends PureComponent {
       isSigningQRObject,
     } = this.props;
     const { cancelConfirmDisabled, speedUpConfirmDisabled } = this.state;
-    const colors = this.context.colors || mockTheme.colors;
-    const styles = createStyles(colors);
+    const { colors, typography } = this.context || mockTheme;
+    const styles = createStyles(colors, typography);
     const transactions =
       submittedTransactions && submittedTransactions.length
         ? submittedTransactions.concat(confirmedTransactions)
@@ -654,29 +670,37 @@ class Transactions extends PureComponent {
 
     return (
       <View style={styles.wrapper} testID={'transactions-screen'}>
-        <FlatList
-          ref={this.flatList}
-          getItemLayout={this.getItemLayout}
-          data={transactions}
-          extraData={this.state}
-          keyExtractor={this.keyExtractor}
-          refreshControl={
-            <RefreshControl
-              colors={[colors.primary.default]}
-              tintColor={colors.icon.default}
-              refreshing={this.state.refreshing}
-              onRefresh={this.onRefresh}
+        <PriceChartContext.Consumer>
+          {({ isChartBeingTouched }) => (
+            <FlatList
+              ref={this.flatList}
+              getItemLayout={this.getItemLayout}
+              data={transactions}
+              extraData={this.state}
+              keyExtractor={this.keyExtractor}
+              refreshControl={
+                <RefreshControl
+                  colors={[colors.primary.default]}
+                  tintColor={colors.icon.default}
+                  refreshing={this.state.refreshing}
+                  onRefresh={this.onRefresh}
+                />
+              }
+              renderItem={this.renderItem}
+              initialNumToRender={10}
+              maxToRenderPerBatch={2}
+              onEndReachedThreshold={0.5}
+              ListHeaderComponent={header}
+              ListFooterComponent={
+                transactions.length > 0 ? this.renderFooter : this.renderEmpty()
+              }
+              style={baseStyles.flexGrow}
+              scrollIndicatorInsets={{ right: 1 }}
+              onScroll={this.onScroll}
+              scrollEnabled={!isChartBeingTouched}
             />
-          }
-          renderItem={this.renderItem}
-          initialNumToRender={10}
-          maxToRenderPerBatch={2}
-          onEndReachedThreshold={0.5}
-          ListHeaderComponent={header}
-          ListFooterComponent={this.renderViewMore}
-          style={baseStyles.flexGrow}
-          scrollIndicatorInsets={{ right: 1 }}
-        />
+          )}
+        </PriceChartContext.Consumer>
 
         {!isSigningQRObject && this.state.cancelIsOpen && (
           <TransactionActionModal
@@ -719,31 +743,26 @@ class Transactions extends PureComponent {
   };
 
   render = () => {
-    const colors = this.context.colors || mockTheme.colors;
-    const styles = createStyles(colors);
+    const { colors, typography } = this.context || mockTheme;
+    const styles = createStyles(colors, typography);
 
     return (
-      <SafeAreaView
-        edges={['bottom']}
-        style={styles.wrapper}
-        testID={'txn-screen'}
-      >
-        {!this.state.ready || this.props.loading
-          ? this.renderLoader()
-          : this.props.transactions.length ||
-            this.props.submittedTransactions.length
-          ? this.renderList()
-          : this.renderEmpty()}
-        {(this.state.speedUp1559IsOpen || this.state.cancel1559IsOpen) &&
-          this.renderUpdateTxEIP1559Gas(this.state.cancel1559IsOpen)}
-      </SafeAreaView>
+      <PriceChartProvider>
+        <View style={styles.wrapper} testID={'txn-screen'}>
+          {!this.state.ready || this.props.loading
+            ? this.renderLoader()
+            : this.renderList()}
+          {(this.state.speedUp1559IsOpen || this.state.cancel1559IsOpen) &&
+            this.renderUpdateTxEIP1559Gas(this.state.cancel1559IsOpen)}
+        </View>
+      </PriceChartProvider>
     );
   };
 }
 
 const mapStateToProps = (state) => ({
   accounts: state.engine.backgroundState.AccountTrackerController.accounts,
-  chainId: state.engine.backgroundState.NetworkController.provider.chainId,
+  chainId: selectChainId(state),
   collectibleContracts: collectibleContractsSelector(state),
   contractExchangeRates:
     state.engine.backgroundState.TokenRatesController.contractExchangeRates,
@@ -771,7 +790,7 @@ const mapStateToProps = (state) => ({
     state.engine.backgroundState.CurrencyRateController.nativeCurrency,
   gasEstimateType:
     state.engine.backgroundState.GasFeeController.gasEstimateType,
-  networkType: state.engine.backgroundState.NetworkController.provider.type,
+  networkType: selectProviderType(state),
 });
 
 Transactions.contextType = ThemeContext;

@@ -5,13 +5,11 @@ import { useNavigation } from '@react-navigation/native';
 import { Order } from '@consensys/on-ramp-sdk';
 import { ScrollView } from 'react-native-gesture-handler';
 import useAnalytics from '../hooks/useAnalytics';
+import useThunkDispatch from '../../../hooks/useThunkDispatch';
 import ScreenLayout from '../components/ScreenLayout';
 import OrderDetail from '../components/OrderDetails';
 import StyledButton from '../../StyledButton';
-import {
-  makeOrderIdSelector,
-  updateFiatOrder,
-} from '../../../../reducers/fiatOrders';
+import { getOrderById, updateFiatOrder } from '../../../../reducers/fiatOrders';
 import { strings } from '../../../../../locales/i18n';
 import { getFiatOnRampAggNavbar } from '../../Navbar';
 import Routes from '../../../../constants/navigation/Routes';
@@ -22,6 +20,7 @@ import {
 } from '../../../../util/navigation/navUtils';
 import { useTheme } from '../../../../util/theme';
 import Logger from '../../../../util/Logger';
+import { selectProviderConfig } from '../../../../selectors/networkController';
 
 interface OrderDetailsParams {
   orderId?: string;
@@ -34,18 +33,17 @@ export const createOrderDetailsNavDetails =
 
 const OrderDetails = () => {
   const trackEvent = useAnalytics();
-  const provider = useSelector(
-    (state: any) => state.engine.backgroundState.NetworkController.provider,
-  );
+  const providerConfig = useSelector(selectProviderConfig);
   const frequentRpcList = useSelector(
     (state: any) =>
       state.engine.backgroundState.PreferencesController.frequentRpcList,
   );
   const params = useParams<OrderDetailsParams>();
-  const order = useSelector(makeOrderIdSelector(params.orderId));
+  const order = useSelector((state) => getOrderById(state, params.orderId));
   const { colors } = useTheme();
   const navigation = useNavigation();
   const dispatch = useDispatch();
+  const dispatchThunk = useThunkDispatch();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -87,7 +85,9 @@ const OrderDetails = () => {
     if (!order) return;
     try {
       setIsRefreshing(true);
-      await processFiatOrder(order, dispatchUpdateFiatOrder);
+      await processFiatOrder(order, dispatchUpdateFiatOrder, dispatchThunk, {
+        forced: true,
+      });
     } catch (error) {
       Logger.error(error as Error, {
         message: 'FiatOrders::OrderDetails error while processing order',
@@ -96,7 +96,7 @@ const OrderDetails = () => {
     } finally {
       setIsRefreshing(false);
     }
-  }, [dispatchUpdateFiatOrder, order]);
+  }, [dispatchThunk, dispatchUpdateFiatOrder, order]);
 
   const handleMakeAnotherPurchase = useCallback(() => {
     navigation.goBack();
@@ -123,7 +123,7 @@ const OrderDetails = () => {
           <ScreenLayout.Content>
             <OrderDetail
               order={order}
-              provider={provider}
+              providerConfig={providerConfig}
               frequentRpcList={frequentRpcList}
             />
           </ScreenLayout.Content>

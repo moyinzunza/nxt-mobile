@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import Gestures from '../helpers/Gestures';
 import Selectors from '../helpers/Selectors';
 import {
@@ -22,25 +23,31 @@ class AddCustomImportToken {
   async typeCustomTokenAddress(text) {
     await Gestures.typeText(this.customTokenAddressField, text);
   }
+
   async scrollToImportButton() {
-    await Gestures.swipe({ x: 400, y: 1450 }, { x: 100, y: 10 });
+    await Gestures.swipe({ x: 300, y: 1000 }, { x: 300, y: 10 });
   }
 
   async tapImportButton() {
-    await driver.pause(2000);
-    await this.scrollToImportButton(); // because the bottom nav is blocking the import button
-    await Gestures.tap(this.importButton);
-    await Gestures.tap(this.importButton);
+    await Gestures.waitAndTap(this.importButton);
   }
 
   async tapTokenSymbolField() {
-    await Gestures.tap(this.symbolField);
+    await Gestures.waitAndTap(this.symbolField);
   }
 
-  async tapTokenSymbolFieldAndDismissKeyboard() {
-    await this.tapTokenSymbolField();
-    await driver.pause(2000);
-    await driver.hideKeyboard();
+  async isTokenSymbolDisplayed() {
+    await Gestures.waitAndTap(this.symbolField);
+  }
+
+  async waitForImportButtonEnabled() {
+    const importButton = await this.importButton;
+    await importButton.waitForEnabled();
+  }
+
+  async isTokenSymbolFieldNotNull() {
+    await expect(this.symbolField).not.toHaveText('GNO');
   }
 }
+
 export default new AddCustomImportToken();

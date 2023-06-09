@@ -18,7 +18,7 @@ const initialState = {
     backgroundState: {
       CurrencyRateController: { currentCurrency: 'USD' },
       NetworkController: {
-        provider: {
+        providerConfig: {
           type: 'mainnet',
         },
       },
@@ -35,6 +35,6 @@ describe('Settings', () => {
         <Settings />
       </Provider>,
     );
-    expect(wrapper.dive()).toMatchSnapshot();
+    expect(wrapper).toMatchSnapshot();
   });
 });

@@ -13,7 +13,7 @@ const initialState = {
         conversionRate: 0.1,
       },
       NetworkController: {
-        provider: {
+        providerConfig: {
           ticker: 'ETH',
           chainId: '1',
         },
@@ -30,6 +30,6 @@ describe('TransactionReviewEIP1559', () => {
         <TransactionReviewEIP1559 />
       </Provider>,
     );
-    expect(wrapper.dive()).toMatchSnapshot();
+    expect(wrapper).toMatchSnapshot();
   });
 });
