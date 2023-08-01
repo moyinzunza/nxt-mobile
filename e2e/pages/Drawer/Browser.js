@@ -39,6 +39,7 @@ const CONFIRM_BUTTON_TEXT = messages.confirmation_modal.confirm_cta;
 
 const WEBVIEW_TEST_DAPP_EIP1559_BUTTON_ID = 'sendEIP1559Button';
 const WEBVIEW_TEST_DAPP_CONNECT_BUTTON_ID = 'connectButton';
+const WEBVIEW_TEST_DAPP_TRANSFER_FROM_BUTTON_ID = 'transferFromButton';
 
 export default class Browser {
   static async tapUrlInputBox() {
@@ -147,7 +148,7 @@ export default class Browser {
   }
 
   static async tapConnectButton() {
-    if (device.getPlatform === 'android') {
+    if (device.getPlatform() === 'android') {
       await TestHelpers.tapWebviewElement(WEBVIEW_TEST_DAPP_CONNECT_BUTTON_ID);
     } else {
       await TestHelpers.tapAtPoint(
@@ -156,6 +157,22 @@ export default class Browser {
       );
     }
   }
+
+  static async tapTransferFromButton() {
+    if (device.getPlatform() === 'android') {
+      console.log(
+        '<<<<< in tapTransferFromButton() - tapping Transfer From button',
+      );
+      await TestHelpers.tapWebviewElement(
+        WEBVIEW_TEST_DAPP_TRANSFER_FROM_BUTTON_ID,
+      );
+    } else {
+      // To be implemented
+    }
+    await TestHelpers.delay(3000);
+    await TestHelpers.tapByText(CONFIRM_BUTTON_TEXT, 0);
+  }
+
   static async tapSendEIP1559() {
     // this method only works for android // at this moment in time only android supports interacting with webviews:https://wix.github.io/Detox/docs/api/webviews
 
@@ -221,4 +238,15 @@ export default class Browser {
     await Browser.navigateToURL(TEST_DAPP_URL);
     await TestHelpers.delay(3000);
   }
+
+  static async navigateToErc721Contract(testDappUrl, erc721Address) {
+    await Browser.tapUrlInputBox();
+    await Browser.navigateToURL(testDappUrl + '?contract=' + erc721Address);
+  }
+
+  static async navigateToErc20Contract(testDappUrl, erc721Address) {
+    await Browser.tapUrlInputBox();
+    await Browser.navigateToURL(testDappUrl + '?contract=' + erc721Address);
+  }
+
 }
