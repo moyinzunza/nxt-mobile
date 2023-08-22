@@ -911,6 +911,7 @@ class ApproveTransactionReview extends PureComponent {
                           gasObject={
                             !showFeeMarket ? legacyGasObject : eip1559GasObject
                           }
+                          gasObjectLegacy={legacyGasObject}
                           updateTransactionState={updateTransactionState}
                           onlyGas
                           multiLayerL1FeeTotal={multiLayerL1FeeTotal}
