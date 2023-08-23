@@ -908,9 +908,7 @@ class ApproveTransactionReview extends PureComponent {
                           isAnimating={isAnimating}
                           gasEstimationReady={gasEstimationReady}
                           legacy={!showFeeMarket}
-                          gasObject={
-                            !showFeeMarket ? legacyGasObject : eip1559GasObject
-                          }
+                          gasObject={eip1559GasObject}
                           gasObjectLegacy={legacyGasObject}
                           updateTransactionState={updateTransactionState}
                           onlyGas
