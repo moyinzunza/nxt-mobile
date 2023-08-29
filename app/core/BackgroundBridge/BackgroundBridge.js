@@ -19,8 +19,9 @@ import WalletConnectPort from './WalletConnectPort';
 import Port from './Port';
 import {
   selectChainId,
-  selectNetwork,
+  selectNetworkId,
   selectProviderConfig,
+  selectLegacyNetwork,
 } from '../../selectors/networkController';
 import { store } from '../../store';
 
@@ -72,7 +73,7 @@ export class BackgroundBridge extends EventEmitter {
     this.engine = null;
 
     this.chainIdSent = selectChainId(store.getState());
-    this.networkVersionSent = selectNetwork(store.getState());
+    this.networkVersionSent = selectNetworkId(store.getState());
 
     // This will only be used for WalletConnect for now
     this.addressSent =
@@ -101,7 +102,7 @@ export class BackgroundBridge extends EventEmitter {
 
     if (this.isRemoteConn) {
       const memState = this.getState();
-      const publicState = this.getProviderNetworkState(memState);
+      const publicState = this.getProviderNetworkState();
       const selectedAddress = memState.selectedAddress;
       this.notifyChainChanged(publicState);
       this.notifySelectedAddressChanged(selectedAddress);
@@ -156,7 +157,7 @@ export class BackgroundBridge extends EventEmitter {
     });
   }
 
-  getProviderNetworkState({ network }) {
+  getProviderNetworkState() {
     const providerConfig = selectProviderConfig(store.getState());
     const networkType = providerConfig.type;
 
@@ -175,7 +176,7 @@ export class BackgroundBridge extends EventEmitter {
     }
 
     const result = {
-      networkVersion: network,
+      networkVersion: selectLegacyNetwork(store().getState()),
       chainId,
     };
     return result;
@@ -202,7 +203,7 @@ export class BackgroundBridge extends EventEmitter {
     if (!memState) {
       memState = this.getState();
     }
-    const publicState = this.getProviderNetworkState(memState);
+    const publicState = this.getProviderNetworkState();
 
     // Check if update already sent
     if (
@@ -229,10 +230,9 @@ export class BackgroundBridge extends EventEmitter {
   }
 
   getProviderState() {
-    const memState = this.getState();
     return {
       isUnlocked: this.isUnlocked(),
-      ...this.getProviderNetworkState(memState),
+      ...this.getProviderNetworkState(),
     };
   }
 
@@ -352,11 +352,11 @@ export class BackgroundBridge extends EventEmitter {
    */
   getState() {
     const vault = Engine.context.KeyringController.state.vault;
-    const { network, selectedAddress } = Engine.datamodel.flatState;
+    const { selectedAddress } = Engine.datamodel.flatState;
     return {
       isInitialized: !!vault,
       isUnlocked: true,
-      network,
+      network: selectLegacyNetwork(store.getState()),
       selectedAddress,
     };
   }

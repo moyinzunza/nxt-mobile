@@ -704,9 +704,9 @@ class Engine {
 
     this.controllerMessenger.subscribe(
       AppConstants.NETWORK_STATE_CHANGE_EVENT,
-      (state: { network: string; providerConfig: { chainId: any } }) => {
+      (state: NetworkState) => {
         if (
-          state.network !== 'loading' &&
+          state.networkStatus !== 'loading' &&
           state.providerConfig.chainId !== currentChainId
         ) {
           // We should add a state or event emitter saying the provider changed
