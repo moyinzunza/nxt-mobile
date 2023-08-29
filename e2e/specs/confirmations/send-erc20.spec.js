@@ -46,7 +46,7 @@ describe(Regression('sendERC20 tokens test'), () => {
     // Connect account
     await TestDApp.connect();
 
-    // Transfer NFT
+    // Transfer ERC20 tokens
     await TestDApp.tapTransferFromButton(ERC721_ADDRESS);
     await TestHelpers.delay(3000);
 
@@ -55,7 +55,7 @@ describe(Regression('sendERC20 tokens test'), () => {
     // Navigate to the activity screen
     await TabBarComponent.tapActivity();
 
-    // Assert collectible is sent
+    // Assert ERC20 tokens are sent
     await TestHelpers.checkIfElementByTextIsVisible(
       SENT_COLLECTIBLE_MESSAGE_TEXT,
     );
