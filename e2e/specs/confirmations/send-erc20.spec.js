@@ -14,7 +14,7 @@ import root from '../../../locales/languages/en.json';
 
 const SENT_COLLECTIBLE_MESSAGE_TEXT = root.transactions.sent_collectible;
 const validAccount = Accounts.getValidAccount();
-const ERC721_ADDRESS = '0x26D6C3e7aEFCE970fe3BE5d589DbAbFD30026924';
+const ERC20_ADDRESS = '0xE2B0CA120008b83e27687c38b46BEA4F5FEcfA61';
 
 describe(Regression('sendERC20 tokens test'), () => {
   let ganacheServer;
@@ -41,13 +41,13 @@ describe(Regression('sendERC20 tokens test'), () => {
     await TabBarComponent.tapBrowser();
 
     // Navigate to the ERC20 url
-    await TestDApp.navigateToErc721Contract(TEST_DAPP_URL, ERC721_ADDRESS);
+    await TestDApp.navigateToErc721Contract(TEST_DAPP_URL, ERC20_ADDRESS);
 
     // Connect account
     await TestDApp.connect();
 
     // Transfer ERC20 tokens
-    await TestDApp.tapTransferFromButton(ERC721_ADDRESS);
+    await TestDApp.tapTransferFromButton(ERC20_ADDRESS);
     await TestHelpers.delay(3000);
 
     await TestDApp.tapConfirmButton();
