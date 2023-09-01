@@ -9,12 +9,21 @@ import { InteractionManager } from 'react-native';
 import { strings } from '../../../locales/i18n';
 import { selectChainId } from '../../selectors/networkController';
 import { store } from '../../store';
+import { getBlockaidMetricsParams, isBlockaidFeatureEnabled } from '../blockaid';
 
 export const getAnalyticsParams = (messageParams, signType) => {
   try {
     const { currentPageInformation } = messageParams;
     const chainId = selectChainId(store.getState());
     const url = new URL(currentPageInformation?.url);
+
+    let blockaidParams = {};
+    if (isBlockaidFeatureEnabled()) {
+      blockaidParams = getBlockaidMetricsParams(
+        messageParams.securityAlertResponse,
+      );
+    }
+
     return {
       account_type: getAddressAccountType(messageParams.from),
       dapp_host_name: url?.host,
@@ -22,6 +31,7 @@ export const getAnalyticsParams = (messageParams, signType) => {
       sign_type: signType,
       version: messageParams?.version,
       ...currentPageInformation?.analytics,
+      ...blockaidParams,
     };
   } catch (error) {
     return {};
