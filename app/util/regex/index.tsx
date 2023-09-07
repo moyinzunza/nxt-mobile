@@ -5,54 +5,48 @@ function hasDecimals(separator: string, decimalPlaces: string) {
   return new RegExp(`^\\d+\\${separator}\\d{${decimalPlaces}}$`, 'g');
 }
 
-// NOTE: transition to object form like i18n?
-
-export enum RegexEnums {
-  account_balance,
-  activation_key,
-  address_with_spaces,
-  color_black,
-  decimal_string_migrations,
-  decimal_string,
-  default_account,
-  ens_name,
-  fractions,
-  has_one_digit,
-  hex_prefix,
-  integer,
-  local_network,
-  name_initial,
-  node_files,
-  non_number,
-  number,
-  portfolio_url,
-  prefixed_formatted_hex_string,
-  private_credentials,
-  replace_network_error_sentry,
-  sanitize_url,
-  seed_phrase,
-  start_url,
-  trailing_slash,
-  trailing_zero,
-  transaction_nonce,
-  url_http_to_https,
-  url,
-  valid_chain_id_hex,
-  valid_chain_id,
-  wallet_address,
-  white_spaces,
+interface Currency {
+  [key: number]: RegExp;
+}
+export interface RegexTypes {
+  eth: Currency;
+  usd: Currency;
+  account_balance: RegExp;
+  activation_key: RegExp;
+  address_with_spaces: RegExp;
+  color_black: RegExp;
+  decimal_string_migrations: RegExp;
+  decimal_string: RegExp;
+  default_account: RegExp;
+  ens_name: RegExp;
+  fractions: RegExp;
+  has_one_digit: RegExp;
+  hex_prefix: RegExp;
+  integer: RegExp;
+  local_network: RegExp;
+  name_initial: RegExp;
+  node_files: RegExp;
+  non_number: RegExp;
+  number: RegExp;
+  portfolio_url: RegExp;
+  prefixed_formatted_hex_string: RegExp;
+  private_credentials: RegExp;
+  replace_network_error_sentry: RegExp;
+  sanitize_url: RegExp;
+  seed_phrase: RegExp;
+  start_url: RegExp;
+  trailing_slash: RegExp;
+  trailing_zero: RegExp;
+  transaction_nonce: RegExp;
+  url_http_to_https: RegExp;
+  url: RegExp;
+  valid_chain_id_hex: RegExp;
+  valid_chain_id: RegExp;
+  wallet_address: RegExp;
+  white_spaces: RegExp;
 }
 
-interface Curr {
-  {[key: number]: RegExp, [key: number]: RegExp} 
-}
-interface Currencies {
-  eth: Curr;
-  usd: Curr;
-}
-type RETypes = RegexEnums & Currencies;
-
-export const regex: RETypes = {
+const regex: RegexTypes = {
   eth: { 1: /1 ETH/, 2: /2 ETH/ },
   usd: { 3200: /\$3200/, 6400: /\$6400/ },
   account_balance: new RegExp(`${ACCOUNT_BALANCE_BY_ADDRESS_TEST_ID}`),
@@ -71,7 +65,7 @@ export const regex: RETypes = {
   has_one_digit: /^\d$/,
   hex_prefix: /^-?0x/u,
   integer: /^-?\d*(\.0+|\.)?$/,
-  local_networkL:
+  local_network:
     /(^127\.)|(^10\.)|(^172\.1[6-9]\.)|(^172\.2[0-9]\.)|(^172\.3[0-1]\.)|(^192\.168\.)/,
   name_initial: /[a-z]/i,
   // metro, metro-core, metro-source-map, metro-etc.
@@ -98,3 +92,5 @@ export const regex: RETypes = {
   wallet_address: /^(0x){1}[0-9a-fA-F]{40}$/i,
   white_spaces: /\s+/g,
 };
+
+export { regex, hasDecimals };
