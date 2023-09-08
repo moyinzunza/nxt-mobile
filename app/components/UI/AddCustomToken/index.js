@@ -23,7 +23,7 @@ import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import WarningMessage from '../../Views/SendFlow/WarningMessage';
 import NotificationManager from '../../../core/NotificationManager';
 import { ThemeContext, mockTheme } from '../../../util/theme';
-import { REGEX_ADDRESS_WITH_SPACES } from 'app/util/regex';
+import { regex } from 'app/util/regex';
 import generateTestId from '../../../../wdio/utils/generateTestId';
 import {
   CUSTOM_TOKEN_CONTAINER_ID,
@@ -189,7 +189,7 @@ export default class AddCustomToken extends PureComponent {
     const { chainId } = NetworkController?.state?.providerConfig || {};
     const toSmartContract =
       isValidTokenAddress && (await isSmartContractAddress(address, chainId));
-    const addressWithoutSpaces = address.replace(REGEX_ADDRESS_WITH_SPACES, '');
+    const addressWithoutSpaces = address.replace(regex.address_with_spaces, '');
     if (addressWithoutSpaces.length === 0) {
       this.setState({ warningAddress: strings('token.address_cant_be_empty') });
       validated = false;
@@ -210,7 +210,7 @@ export default class AddCustomToken extends PureComponent {
   validateCustomTokenSymbol = () => {
     let validated = true;
     const symbol = this.state.symbol;
-    const symbolWithoutSpaces = symbol.replace(REGEX_ADDRESS_WITH_SPACES, '');
+    const symbolWithoutSpaces = symbol.replace(regex.address_with_spaces, '');
     if (symbolWithoutSpaces.length === 0) {
       this.setState({ warningSymbol: strings('token.symbol_cant_be_empty') });
       validated = false;
@@ -224,7 +224,7 @@ export default class AddCustomToken extends PureComponent {
     let validated = true;
     const decimals = this.state.decimals;
     const decimalsWithoutSpaces = decimals.replace(
-      REGEX_ADDRESS_WITH_SPACES,
+      regex.address_with_spaces,
       '',
     );
     if (decimalsWithoutSpaces.length === 0) {

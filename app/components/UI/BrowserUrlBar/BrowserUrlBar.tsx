@@ -17,7 +17,7 @@ import stylesheet from './BrowserUrlBar.styles';
 import generateTestId from '../../../../wdio/utils/generateTestId';
 import { NAVBAR_TITLE_NETWORK } from '../../../../wdio/screen-objects/testIDs/BrowserScreen/BrowserScreen.testIds';
 import Url from 'url-parse';
-import { REGEX_START_URL } from 'app/util/regex';
+import { regex } from 'app/util/regex';
 
 const BrowserUrlBar = ({ url, route, onPress }: BrowserUrlBarProps) => {
   const getDappMainUrl = () => {
@@ -31,9 +31,9 @@ const BrowserUrlBar = ({ url, route, onPress }: BrowserUrlBarProps) => {
       url.search(`${AppConstants.IPFS_OVERRIDE_PARAM}=false`) === -1 &&
       Boolean(ensUrl)
     ) {
-      return ensUrl.toLowerCase().replace(REGEX_START_URL, '');
+      return ensUrl.toLowerCase().replace(regex.start_url, '');
     }
-    return urlObj.host.toLowerCase().replace(REGEX_START_URL, '');
+    return urlObj.host.toLowerCase().replace(regex.start_url, '');
   };
 
   const contentProtocol = getURLProtocol(url);

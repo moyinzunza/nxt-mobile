@@ -7,7 +7,7 @@ const INVALID_ENS_NAME_ERROR = 'invalid ENS name';
 // One hour cache threshold.
 const CACHE_REFRESH_THRESHOLD = 60 * 60 * 1000;
 import { EMPTY_ADDRESS } from '../constants/transaction';
-import { REGEX_DEFAULT_ACCOUNT } from 'app/util/regex';
+import { regex } from 'app/util/regex';
 
 /**
  * Utility class with the single responsibility
@@ -65,5 +65,5 @@ export async function doENSLookup(ensName, network) {
 }
 
 export function isDefaultAccountName(name) {
-  return REGEX_DEFAULT_ACCOUNT.test(name);
+  return regex.default_account.test(name);
 }

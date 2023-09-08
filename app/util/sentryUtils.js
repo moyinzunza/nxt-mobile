@@ -4,10 +4,7 @@ import { Dedupe, ExtraErrorData } from '@sentry/integrations';
 import extractEthJsErrorMessage from './extractEthJsErrorMessage';
 import DefaultPreference from 'react-native-default-preference';
 import { AGREED, METRICS_OPT_IN } from '../constants/storage';
-import {
-  REGEX_REPLACE_NETWORK_ERROR_SENTRY,
-  REGEX_SANITIZE_URL,
-} from 'app/util/regex';
+import { regex } from 'app/util/regex';
 
 const METAMASK_ENVIRONMENT = process.env['METAMASK_ENVIRONMENT'] || 'local'; // eslint-disable-line dot-notation
 
@@ -132,7 +129,7 @@ function rewriteReport(report) {
 
 function sanitizeUrlsFromErrorMessages(report) {
   rewriteErrorMessages(report, (errorMessage) => {
-    const urlsInMessage = errorMessage.match(REGEX_SANITIZE_URL);
+    const urlsInMessage = errorMessage.match(regex.sanitize_url);
 
     urlsInMessage?.forEach((url) => {
       if (!ERROR_URL_ALLOWLIST.some((allowedUrl) => url.match(allowedUrl))) {
@@ -146,7 +143,7 @@ function sanitizeUrlsFromErrorMessages(report) {
 function sanitizeAddressesFromErrorMessages(report) {
   rewriteErrorMessages(report, (errorMessage) => {
     const newErrorMessage = errorMessage.replace(
-      REGEX_REPLACE_NETWORK_ERROR_SENTRY,
+      regex.replace_network_error_sentry,
       '**',
     );
     return newErrorMessage;

@@ -19,7 +19,7 @@ import {
   selectChainId,
   selectNetwork,
 } from '../../../../selectors/networkController';
-import { REGEX_NAME_INITIAL } from 'app/util/regex';
+import { regex } from 'app/util/regex';
 
 const createStyles = (colors) =>
   StyleSheet.create({
@@ -208,7 +208,7 @@ class AddressList extends PureComponent {
     networkAddressBookList.forEach((contact) => {
       const contactNameInitial = contact && contact.name && contact.name[0];
       const nameInitial =
-        contactNameInitial && contactNameInitial.match(REGEX_NAME_INITIAL);
+        contactNameInitial && contactNameInitial.match(regex.name_initial);
       const initial = nameInitial
         ? nameInitial[0]
         : strings('address_book.others');

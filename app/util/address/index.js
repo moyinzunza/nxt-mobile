@@ -30,7 +30,7 @@ import {
 } from '../../../app/constants/error';
 import { PROTOCOLS } from '../../constants/deeplinks';
 import TransactionTypes from '../../core/TransactionTypes';
-import { REGEX_ENS_NAME } from 'app/util/regex';
+import { regex } from 'app/util/regex';
 
 const {
   ASSET: { ERC721, ERC1155 },
@@ -200,7 +200,7 @@ export function getAddressAccountType(address) {
 export function isENS(name) {
   if (!name) return false;
 
-  const match = punycode.toASCII(name).toLowerCase().match(REGEX_ENS_NAME);
+  const match = punycode.toASCII(name).toLowerCase().match(regex.ens_name);
 
   const OFFSET = 1;
   const index = name && name.lastIndexOf('.');

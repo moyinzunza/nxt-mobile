@@ -83,7 +83,7 @@ import {
   RELOAD_OPTION,
   SHARE_OPTION,
 } from '../../../../wdio/screen-objects/testIDs/BrowserScreen/OptionMenu.testIds';
-import { REGEX_URL_HTTP_TO_HTTPS } from 'app/util/regex';
+import { regex } from 'app/util/regex';
 
 const { HOMEPAGE_URL, NOTIFICATION_NAMES } = AppConstants;
 const HOMEPAGE_HOST = new URL(HOMEPAGE_URL)?.hostname;
@@ -783,7 +783,7 @@ export const BrowserTab = (props) => {
 
     // Stops normal loading when it's ens, instead call go to be properly set up
     if (isENSUrl(url)) {
-      go(url.replace(REGEX_URL_HTTP_TO_HTTPS, 'https://'));
+      go(url.replace(regex.url_http_to_https, 'https://'));
       return false;
     }
 

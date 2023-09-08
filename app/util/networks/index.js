@@ -21,10 +21,7 @@ import { toLowerCaseEquals } from '../general';
 import { fastSplit } from '../number';
 import { buildUnserializedTransaction } from '../transactions/optimismTransaction';
 import handleNetworkSwitch from './handleNetworkSwitch';
-import {
-  REGEX_PREFIXED_FORMATTED_HEX_STRING,
-  REGEX_LOCAL_NETWORK,
-} from 'app/util/regex';
+import { regex } from 'app/util/regex';
 
 export { handleNetworkSwitch };
 
@@ -234,7 +231,7 @@ export function isKnownNetwork(id) {
 }
 
 export function isPrivateConnection(hostname) {
-  return hostname === 'localhost' || REGEX_LOCAL_NETWORK.test(hostname);
+  return hostname === 'localhost' || regex.local_network.test(hostname);
 }
 
 /**
@@ -313,7 +310,7 @@ export function isPrefixedFormattedHexString(value) {
   if (typeof value !== 'string') {
     return false;
   }
-  return REGEX_PREFIXED_FORMATTED_HEX_STRING.test(value);
+  return regex.prefixed_formatted_hex_string.test(value);
 }
 
 export const getNetworkNonce = async ({ from }) => {

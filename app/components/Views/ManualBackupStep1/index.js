@@ -36,7 +36,7 @@ import { CONFIRM_CHANGE_PASSWORD_INPUT_BOX_ID } from '../../../constants/test-id
 import { MetaMetricsEvents } from '../../../core/Analytics';
 import AnalyticsV2 from '../../../util/analyticsV2';
 import { Authentication } from '../../../core';
-import { REGEX_PRIVATE_CREDENTIALS } from 'app/util/regex';
+import { regex } from 'app/util/regex';
 
 /**
  * View that's shown during the second step of
@@ -68,7 +68,7 @@ const ManualBackupStep1 = ({ route, navigation, appTheme }) => {
       password,
     ).toString();
     return JSON.stringify(mnemonic)
-      .replace(REGEX_PRIVATE_CREDENTIALS, '')
+      .replace(regex.private_credentials, '')
       .split(' ');
   };
 

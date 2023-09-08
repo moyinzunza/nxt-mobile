@@ -11,15 +11,7 @@ import BigNumber from 'bignumber.js';
 import currencySymbols from '../currency-symbols.json';
 import { isZero } from '../lodash';
 export { BNToHex, hexToBN };
-import {
-  REGEX_HEX_PREFIX,
-  REGEX_TRAILING_ZERO,
-  REGEX_FRACTIONS,
-  REGEX_DECIMAL_STRING,
-  REGEX_NUMBER,
-  REGEX_INTEGER,
-  REGEX_PREFIXED_FORMATTED_HEX_STRING,
-} from 'app/util/regex';
+import { regex } from 'app/util/regex';
 
 // Big Number Constants
 const BIG_NUMBER_WEI_MULTIPLIER = new BigNumber('1000000000000000000');
@@ -58,11 +50,11 @@ const baseChange = {
  * @returns {string} The prefixed string.
  */
 export const addHexPrefix = (str) => {
-  if (typeof str !== 'string' || str.match(REGEX_HEX_PREFIX)) {
+  if (typeof str !== 'string' || str.match(regex.hex_prefix)) {
     return str;
   }
 
-  if (str.match(REGEX_HEX_PREFIX)) {
+  if (str.match(regex.hex_prefix)) {
     return str.replace('0X', '0x');
   }
 
@@ -104,7 +96,7 @@ export function fromTokenMinimalUnit(minimalInput, decimals) {
   while (fraction.length < decimals) {
     fraction = '0' + fraction;
   }
-  fraction = fraction.match(REGEX_FRACTIONS)[1];
+  fraction = fraction.match(regex.fractions)[1];
   const whole = minimal.div(base).toString(10);
   let value = '' + whole + (fraction === '0' ? '' : '.' + fraction);
   if (negative) {
@@ -126,7 +118,7 @@ export function fromTokenMinimalUnitString(minimalInput, decimals) {
   }
 
   const tokenFormat = ethersUtils.formatUnits(minimalInput, decimals);
-  const isInteger = Boolean(REGEX_INTEGER.exec(tokenFormat));
+  const isInteger = Boolean(regex.integer.exec(tokenFormat));
 
   const [integerPart, decimalPart] = tokenFormat.split('.');
   if (isInteger) {
@@ -364,7 +356,7 @@ export function toBN(value) {
  * @returns {boolean} - True if the string  is a valid number
  */
 export function isNumber(str) {
-  return REGEX_NUMBER.test(str);
+  return regex.number.test(str);
 }
 
 export const dotAndCommaDecimalFormatter = (value) => {
@@ -484,12 +476,12 @@ export function addCurrencySymbol(
       const decimalString = amount.toString().split('.')[1];
       if (decimalString && decimalString.length > 1) {
         const firstNonZeroDecimal = decimalString.indexOf(
-          decimalString.match(REGEX_DECIMAL_STRING)[0],
+          decimalString.match(regex.decimal_string)[0],
         );
         if (firstNonZeroDecimal > 0) {
           amount = parseFloat(amount).toFixed(firstNonZeroDecimal + 3);
           // remove trailing zeros
-          amount = amount.replace(REGEX_TRAILING_ZERO, '');
+          amount = amount.replace(regex.trailing_zero, '');
         }
       }
     }
@@ -705,7 +697,7 @@ export function isPrefixedFormattedHexString(value) {
   if (typeof value !== 'string') {
     return false;
   }
-  return REGEX_PREFIXED_FORMATTED_HEX_STRING.test(value);
+  return regex.prefixed_formatted_hex_string.test(value);
 }
 
 const converter = ({

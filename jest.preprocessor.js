@@ -24,7 +24,7 @@
 
 'use strict';
 
-const { REGEX_NODE_FILES } = require('./app/util/regex');
+const { regex } = require('./app/util/regex');
 const { transformSync: babelTransformSync } = require('@babel/core');
 /* $FlowFixMe(>=0.54.0 site=react_native_oss) This comment suppresses an error
  * found when Flow v0.54 was deployed. To see the error delete this comment and
@@ -36,7 +36,7 @@ const babelRegisterOnly = require('metro-babel-register');
 const createCacheKeyFunction = require('fbjs-scripts/jest/createCacheKeyFunction');
 const generate = require('@babel/generator').default;
 
-const nodeOptions = babelRegisterOnly.config([REGEX_NODE_FILES]);
+const nodeOptions = babelRegisterOnly.config([regex.node_files]);
 
 babelRegisterOnly([]);
 
@@ -44,7 +44,7 @@ babelRegisterOnly([]);
 const transformer = require('metro-react-native-babel-transformer');
 module.exports = {
   process(src /*: string */, file /*: string */) {
-    if (REGEX_NODE_FILES.test(file)) {
+    if (regex.node_files.test(file)) {
       // node specific transforms only
       return babelTransformSync(src, {
         filename: file,

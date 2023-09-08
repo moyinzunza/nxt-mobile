@@ -56,7 +56,7 @@ import {
   SECRET_RECOVERY_PHRASE_NEXT_BUTTON_ID,
   SECRET_RECOVERY_PHRASE_TEXT,
 } from '../../../../wdio/screen-objects/testIDs/Screens/RevelSecretRecoveryPhrase.testIds';
-import { REGEX_PRIVATE_CREDENTIALS } from 'app/util/regex';
+import { regex } from 'app/util/regex';
 
 const PRIVATE_KEY = 'private_key';
 
@@ -129,7 +129,7 @@ const RevealPrivateCredential = ({
           pswd,
         ).toString();
         privateCredential = JSON.stringify(mnemonic).replace(
-          REGEX_PRIVATE_CREDENTIALS,
+          regex.private_credentials,
           '',
         );
       } else {

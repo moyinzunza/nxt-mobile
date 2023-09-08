@@ -7,13 +7,7 @@ import AccountSelectorList from './AccountSelectorList';
 import { useAccounts } from '../../../components/hooks/useAccounts';
 import { View } from 'react-native';
 import { ACCOUNT_BALANCE_BY_ADDRESS_TEST_ID } from '../../../../wdio/screen-objects/testIDs/Components/AccountListComponent.testIds';
-import {
-  REGEX_1_ETH,
-  REGEX_2ETH,
-  REGEX_3200_USD,
-  REGEX_6400_USD,
-  REGEX_ACCOUNT_BALANCE,
-} from 'app/util/regex';
+import { regex } from 'app/util/regex';
 
 const mockEngine = Engine;
 
@@ -143,17 +137,17 @@ describe('AccountSelectorList', () => {
         `${ACCOUNT_BALANCE_BY_ADDRESS_TEST_ID}-${PERSONAL_ACCOUNT}`,
       );
 
-      expect(within(businessAccountItem).getByText(REGEX_1_ETH)).toBeDefined();
+      expect(within(businessAccountItem).getByText(regex.eth[1])).toBeDefined();
       expect(
-        within(businessAccountItem).getByText(REGEX_3200_USD),
+        within(businessAccountItem).getByText(regex.usd[3200]),
       ).toBeDefined();
 
-      expect(within(personalAccountItem).getByText(REGEX_2ETH)).toBeDefined();
+      expect(within(personalAccountItem).getByText(regex.eth[2])).toBeDefined();
       expect(
-        within(personalAccountItem).getByText(REGEX_6400_USD),
+        within(personalAccountItem).getByText(regex.usd[6400]),
       ).toBeDefined();
 
-      const accounts = getAllByTestId(REGEX_ACCOUNT_BALANCE);
+      const accounts = getAllByTestId(regex.account_balance);
       expect(accounts.length).toBe(2);
 
       expect(toJSON()).toMatchSnapshot();
@@ -175,7 +169,7 @@ describe('AccountSelectorList', () => {
     });
 
     await waitFor(async () => {
-      const accounts = getAllByTestId(REGEX_ACCOUNT_BALANCE);
+      const accounts = getAllByTestId(regex.account_balance);
       expect(accounts.length).toBe(1);
 
       const businessAccountItem = await queryByTestId(

@@ -1,4 +1,4 @@
-import { REGEX_HAS_ONE_DIGIT, hasDecimals } from 'app/util/regex';
+import { regex, hasDecimals } from 'app/util/regex';
 import { KEYS } from './constants';
 
 export default function createKeypadRule({
@@ -26,7 +26,7 @@ export default function createKeypadRule({
         if (currentAmount === '0') {
           return currentAmount;
         }
-        if (REGEX_HAS_ONE_DIGIT.test(currentAmount)) {
+        if (regex.has_one_digit.test(currentAmount)) {
           return '0';
         }
 

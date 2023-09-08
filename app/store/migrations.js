@@ -12,7 +12,7 @@ import {
   EXPLORED,
 } from '../constants/storage';
 import { GOERLI } from '../../app/constants/network';
-import { REGEX_DECIMAL_STRING_MIGRATIONS } from 'app/util/regex';
+import { regex } from 'app/util/regex';
 
 export const migrations = {
   // Needed after https://github.com/MetaMask/controllers/pull/152
@@ -85,7 +85,7 @@ export const migrations = {
     // If provider is rpc, check if the current network has a valid chainId
     const storedChainId =
       typeof provider.chainId === 'string' ? provider.chainId : '';
-    const isDecimalString = REGEX_DECIMAL_STRING_MIGRATIONS.test(storedChainId);
+    const isDecimalString = regex.decimal_string_migrations.test(storedChainId);
     const hasInvalidChainId =
       !isDecimalString || !isSafeChainId(parseInt(storedChainId, 10));
 
