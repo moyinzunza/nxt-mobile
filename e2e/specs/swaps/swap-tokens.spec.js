@@ -1,7 +1,7 @@
 'use strict';
 
 import { loginToApp } from '../../viewHelper';
-import { Regression } from '../../tags';
+import { Smoke } from '../../tags';
 import Onboarding from '../../pages/swaps/OnBoarding';
 import QuoteView from '../../pages/swaps/QuoteView';
 import SwapView from '../../pages/swaps/SwapView';
