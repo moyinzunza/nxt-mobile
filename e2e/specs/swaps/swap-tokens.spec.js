@@ -17,7 +17,7 @@ import {
 } from '../../fixtures/fixture-helper';
 import Networks from '../../resources/networks.json';
 
-describe(Regression('Swap Tests'), () => {
+describe(Smoke('Swap Tests'), () => {
   let swapOnboarded = false;
   beforeAll(async () => {
     const fixture = new FixtureBuilder()

@@ -15,7 +15,7 @@ import {
 } from '../../fixtures/fixture-helper';
 import Networks from '../../resources/networks.json';
 
-describe(Regression('Token Chart Tests'), () => {
+describe(Smoke('Token Chart Tests'), () => {
   beforeEach(async () => {
     await startFixtureServer();
   });
