@@ -46,7 +46,6 @@ import {
 } from '../../../../core/GasPolling/GasPolling';
 import {
   selectChainId,
-  selectNetwork,
   selectProviderType,
   selectTicker,
   selectRpcTarget,
@@ -139,10 +138,6 @@ class Approve extends PureComponent {
      * An object of all saved addresses
      */
     addressBook: PropTypes.object,
-    /**
-     * The current network of the app
-     */
-    networkId: PropTypes.string,
     networkConfigurations: PropTypes.object,
     providerRpcTarget: PropTypes.string,
     /**
@@ -643,7 +638,6 @@ class Approve extends PureComponent {
     const {
       transaction,
       addressBook,
-      networkId,
       gasEstimateType,
       gasFeeEstimates,
       primaryCurrency,
@@ -672,7 +666,7 @@ class Approve extends PureComponent {
 
     const savedContactList = checkIfAddressIsSaved(
       addressBook,
-      networkId,
+      chainId,
       transaction,
     );
 
@@ -842,7 +836,6 @@ const mapStateToProps = (state) => ({
   nativeCurrency: selectNativeCurrency(state),
   showCustomNonce: state.settings.showCustomNonce,
   addressBook: state.engine.backgroundState.AddressBookController.addressBook,
-  networkId: selectNetwork(state),
   providerType: selectProviderType(state),
   providerRpcTarget: selectRpcTarget(state),
   networkConfigurations: selectNetworkConfigurations(state),

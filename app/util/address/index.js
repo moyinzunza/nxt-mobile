@@ -283,13 +283,13 @@ export function isValidHexAddress(
  *  address (String) - Represents the address of the account
  *  addressBook (Object) -  Represents all the contacts that we have saved on the address book
  *  identities (Object) - Represents our accounts on the current network of the wallet
- *  networkId (string) - The current network ID
+ *  chainId (string) - The chain ID for the current selected network
  * @returns String | undefined - When it is saved returns a string "contactAlreadySaved" if it's not reutrn undefined
  */
 function checkIfAddressAlreadySaved(params) {
-  const { address, addressBook, networkId, identities } = params;
+  const { address, addressBook, chainId, identities } = params;
   if (address) {
-    const networkAddressBook = addressBook[networkId] || {};
+    const networkAddressBook = addressBook[chainId] || {};
 
     const checksummedResolvedAddress = toChecksumAddress(address);
     if (
@@ -309,7 +309,7 @@ function checkIfAddressAlreadySaved(params) {
  * is present in ContactForm of Contatcs, in order to add a new contact
  * Variables:
  *  toAccount (String) - Represents the account address or ens
- *  networkId (String) - Represents the current network ID
+ *  chainId (String) - Represents the current chain ID
  *  addressBook (Object) - Represents all the contacts that we have saved on the address book
  *  identities (Object) - Represents our accounts on the current network of the wallet
  *  providerType (String) - Represents the network name
@@ -326,7 +326,7 @@ function checkIfAddressAlreadySaved(params) {
  *
  */
 export async function validateAddressOrENS(params) {
-  const { toAccount, networkId, addressBook, identities, chainId } = params;
+  const { toAccount, addressBook, identities, chainId } = params;
   const { AssetsContractController } = Engine.context;
 
   let addressError,
@@ -342,7 +342,7 @@ export async function validateAddressOrENS(params) {
     const contactAlreadySaved = checkIfAddressAlreadySaved({
       address: toAccount,
       addressBook,
-      networkId,
+      chainId,
       identities,
     });
 
@@ -399,7 +399,7 @@ export async function validateAddressOrENS(params) {
     const contactAlreadySaved = checkIfAddressAlreadySaved({
       address: resolvedAddress,
       addressBook,
-      networkId,
+      chainId,
       identities,
     });
 
