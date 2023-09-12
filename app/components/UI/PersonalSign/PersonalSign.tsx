@@ -69,6 +69,7 @@ const PersonalSign = ({
         chain_id: chainId,
         sign_type: 'personal',
         ...currentPageInformation?.analytics,
+        ...blockaidParams,
       };
     } catch (error) {
       return {};
