@@ -664,7 +664,7 @@ export function getOnboardingNavbarOptions(
   const headerLeftHide = headerLeft || route.params?.headerLeft;
   const innerStyles = StyleSheet.create({
     headerStyle: {
-      backgroundColor: themeColors.background.default,
+      backgroundColor: 'transparent',
       shadowColor: importedColors.transparent,
       elevation: 0,
     },
@@ -701,7 +701,7 @@ export function getOnboardingNavbarOptions(
 export function getTransparentOnboardingNavbarOptions(themeColors) {
   const innerStyles = StyleSheet.create({
     headerStyle: {
-      backgroundColor: themeColors.background.default,
+      backgroundColor: 'transparent',
       shadowColor: importedColors.transparent,
       elevation: 0,
     },
