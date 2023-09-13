@@ -8,9 +8,8 @@ import {
   Image,
   Dimensions,
   InteractionManager,
-  Platform,
+  ImageBackground
 } from 'react-native';
-import { MetaMetricsEvents } from '../../../core/Analytics';
 import StyledButton from '../../UI/StyledButton';
 import { fontStyles, baseStyles } from '../../../styles/common';
 import { strings } from '../../../../locales/i18n';
@@ -21,16 +20,13 @@ import OnboardingScreenWithBg from '../../UI/OnboardingScreenWithBg';
 import Device from '../../../util/device';
 import { saveOnboardingEvent } from '../../../actions/onboarding';
 import { connect } from 'react-redux';
-import AnalyticsV2 from '../../../util/analyticsV2';
+import AnalyticsV2, { ANALYTICS_EVENTS_V2 } from '../../../util/analyticsV2';
 import DefaultPreference from 'react-native-default-preference';
 import { METRICS_OPT_IN } from '../../../constants/storage';
 import { ThemeContext, mockTheme } from '../../../util/theme';
-import {
-  WELCOME_SCREEN_CAROUSEL_TITLE_ID,
-  WELCOME_SCREEN_GET_STARTED_BUTTON_ID,
-  WELCOME_SCREEN_CAROUSEL_CONTAINER_ID,
-} from '../../../../wdio/screen-objects/testIDs/Screens/WelcomeScreen.testIds';
-import generateTestId from '../../../../wdio/utils/generateTestId';
+import { relative } from 'path';
+import { capitalize } from 'app/util/general';
+
 const IMAGE_3_RATIO = 215 / 315;
 const IMAGE_2_RATIO = 222 / 239;
 const IMAGE_1_RATIO = 285 / 203;
@@ -47,23 +43,45 @@ const createStyles = (colors) =>
       paddingVertical: 30,
       flex: 1,
     },
-    title: {
-      fontSize: 24,
-      marginBottom: 12,
-      color: colors.text.default,
+    blackcontainer: {
+      backgroundColor: "black",
+      paddingVertical: 35,
+      paddingHorizontal: 25
+    },
+    btnGetStarted:{
+      fontFamily: "Poppins-Bold",
+      fontSize: 23,
+      textTransform: "capitalize",
+      paddingBottom: 0,
+      lineHeight: 28,
+      height: 25
+    },
+    nxtwallet: {
+      fontSize: 30,
+      lineHeight: 28,
+      marginBottom: -5,
+      color: colors.primary.default,
       justifyContent: 'center',
       textAlign: 'center',
       ...fontStyles.bold,
     },
+    title: {
+      fontSize: 24,
+      marginBottom: 0,
+      color: colors.text.default,
+      justifyContent: 'center',
+      textAlign: 'center',
+      fontFamily: "Poppins-Bold",
+    },
     subtitle: {
       fontSize: 14,
       lineHeight: 19,
-      marginTop: 12,
+      marginTop: 5,
       marginBottom: 25,
-      color: colors.text.alternative,
+      color: 'white',
       justifyContent: 'center',
       textAlign: 'center',
-      ...fontStyles.normal,
+      fontFamily: "Poppins-SemiBold",
     },
     ctas: {
       paddingHorizontal: 40,
@@ -73,28 +91,15 @@ const createStyles = (colors) =>
     ctaWrapper: {
       justifyContent: 'flex-end',
     },
-    carouselImage: {},
-    // eslint-disable-next-line react-native/no-unused-styles
-    carouselImage1: {
-      marginTop: 30,
-      width: DEVICE_WIDTH - IMG_PADDING,
-      height: (DEVICE_WIDTH - IMG_PADDING) * IMAGE_1_RATIO,
-    },
-    // eslint-disable-next-line react-native/no-unused-styles
-    carouselImage2: {
-      width: DEVICE_WIDTH - IMG_PADDING,
-      height: (DEVICE_WIDTH - IMG_PADDING) * IMAGE_2_RATIO,
-    },
-    // eslint-disable-next-line react-native/no-unused-styles
-    carouselImage3: {
-      width: DEVICE_WIDTH - 60,
-      height: (DEVICE_WIDTH - 60) * IMAGE_3_RATIO,
+    carouselImage: {
+      width: 115,
+      height: 115,
+      marginTop: 10
     },
     carouselImageWrapper: {
-      flex: 1,
-      flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
+      marginBottom: 20
     },
     circle: {
       width: 8,
@@ -117,15 +122,7 @@ const createStyles = (colors) =>
     },
   });
 
-const onboarding_carousel_1 = require('../../../images/onboarding-carousel-1.png'); // eslint-disable-line
-const onboarding_carousel_2 = require('../../../images/onboarding-carousel-2.png'); // eslint-disable-line
-const onboarding_carousel_3 = require('../../../images/onboarding-carousel-3.png'); // eslint-disable-line
-
-const carousel_images = [
-  onboarding_carousel_1,
-  onboarding_carousel_2,
-  onboarding_carousel_3,
-];
+const nxt_black_logo = require('../../../images/nxtblacklogo.png'); // eslint-disable-line
 
 /**
  * View that is displayed to first time (new) users
@@ -159,18 +156,18 @@ class OnboardingCarousel extends PureComponent {
 
   onPressGetStarted = () => {
     this.props.navigation.navigate('Onboarding');
-    this.trackEvent(MetaMetricsEvents.ONBOARDING_STARTED);
+    //this.trackEvent(ANALYTICS_EVENTS_V2.ONBOARDING_STARTED);
   };
 
   renderTabBar = () => <View />;
 
   onChangeTab = (obj) => {
     this.setState({ currentTab: obj.i + 1 });
-    this.trackEvent(MetaMetricsEvents.ONBOARDING_WELCOME_SCREEN_ENGAGEMENT, {
+    /*this.trackEvent(ANALYTICS_EVENTS_V2.ONBOARDING_WELCOME_SCREEN_ENGAGEMENT, {
       message_title: strings(`onboarding_carousel.title${[obj.i + 1]}`, {
         locale: 'en',
       }),
-    });
+    });*/
   };
 
   updateNavBar = () => {
@@ -182,7 +179,7 @@ class OnboardingCarousel extends PureComponent {
 
   componentDidMount = () => {
     this.updateNavBar();
-    this.trackEvent(MetaMetricsEvents.ONBOARDING_WELCOME_MESSAGE_VIEWED);
+    //this.trackEvent(ANALYTICS_EVENTS_V2.ONBOARDING_WELCOME_MESSAGE_VIEWED);
   };
 
   componentDidUpdate = () => {
@@ -195,84 +192,52 @@ class OnboardingCarousel extends PureComponent {
     const styles = createStyles(colors);
 
     return (
-      <View
-        style={baseStyles.flexGrow}
-        testID={'onboarding-carouselcarousel-screen--screen'}
-      >
-        <OnboardingScreenWithBg screen={'carousel'}>
-          <ScrollView
-            style={baseStyles.flexGrow}
-            contentContainerStyle={styles.scroll}
+      <View style={baseStyles.flexGrow} testID={'onboarding-carousel-screen'}>
+        <ImageBackground 
+          source={require("../../../images/bluedotbackground.png")}
+          style={{ flex: 1,
+            width: null,
+            height: null,
+            paddingTop: 100,
+            marginTop: -100
+            }}
           >
-            <View
-              style={styles.wrapper}
-              {...generateTestId(
-                Platform,
-                WELCOME_SCREEN_CAROUSEL_CONTAINER_ID,
-              )}
-            >
-              <ScrollableTabView
-                style={styles.scrollTabs}
-                renderTabBar={this.renderTabBar}
-                onChangeTab={this.onChangeTab}
-              >
-                {['one', 'two', 'three'].map((value, index) => {
-                  const key = index + 1;
-                  const imgStyleKey = `carouselImage${key}`;
-                  return (
-                    <View key={key} style={baseStyles.flexGrow}>
-                      <View
-                        style={styles.tab}
-                        {...generateTestId(
-                          Platform,
-                          WELCOME_SCREEN_CAROUSEL_TITLE_ID(key),
-                        )}
-                      >
-                        <Text style={styles.title}>
-                          {strings(`onboarding_carousel.title${key}`)}
+            <View style={styles.wrapper}>
+                        <View style={styles.carouselImageWrapper}>
+                      <Image
+                          source={nxt_black_logo}
+                          style={[styles.carouselImage]}
+                          resizeMethod={'auto'}
+                        />
+                        </View>
+                        <View style={styles.blackcontainer}>
+                          
+                        <Text
+                          style={styles.nxtwallet}
+                        >
+                          {"NXTWallet"}
+                        </Text>
+                        <Text
+                          style={styles.title}
+                          testID={`carousel-screen-three`}
+                        >
+                          {strings(`onboarding_carousel.title3`)}
                         </Text>
                         <Text style={styles.subtitle}>
-                          {strings(`onboarding_carousel.subtitle${key}`)}
+                          {strings(`onboarding_carousel.subtitle3`)}
                         </Text>
-                      </View>
-                      <View style={styles.carouselImageWrapper}>
-                        <Image
-                          source={carousel_images[index]}
-                          style={[styles.carouselImage, styles[imgStyleKey]]}
-                          resizeMethod={'auto'}
-                          testID={`carousel-${value}-image`}
-                        />
-                      </View>
-                    </View>
-                  );
-                })}
-              </ScrollableTabView>
 
-              <View style={styles.progessContainer}>
-                {[1, 2, 3].map((i) => (
-                  <View
-                    key={i}
-                    style={[
-                      styles.circle,
-                      currentTab === i ? styles.solidCircle : {},
-                    ]}
-                  />
-                ))}
-              </View>
+                        <StyledButton
+                          type={'confirm'}
+                          style={styles.btnGetStarted}
+                          onPress={this.onPressGetStarted}
+                          testID={'onboarding-get-started-button'}
+                        >
+                          {strings('onboarding_carousel.get_started')}
+                        </StyledButton>
+                      </View>
             </View>
-          </ScrollView>
-          <View
-            style={styles.ctas}
-            testID={WELCOME_SCREEN_GET_STARTED_BUTTON_ID}
-          >
-            <View style={styles.ctaWrapper}>
-              <StyledButton type={'normal'} onPress={this.onPressGetStarted}>
-                {strings('onboarding_carousel.get_started')}
-              </StyledButton>
-            </View>
-          </View>
-        </OnboardingScreenWithBg>
-        <FadeOutOverlay />
+        </ImageBackground>
       </View>
     );
   }
